@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Princess Amira AR</title>
-  <meta name="description" content="Princess Amira's magic AR world — place her palace beach on your table and help her save her long, strong hair." />
+  <meta name="description" content="Princess Amira's magic AR world — place her palace beach on your table and help her chase away the Tangle Cloud." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
   <script type="importmap">
     {
@@ -19,24 +19,29 @@
 </head>
 <body>
   <div id="stage"></div>
-
-  <!-- Everything here doubles as the WebXR DOM overlay in AR -->
+  <!--OVERLAY-->
   <div id="overlay">
     <section id="start">
       <div class="card">
-        <div class="crown" aria-hidden="true">👑</div>
+        <div class="eyebrow" data-i18n="eyebrow"></div>
         <h1 data-i18n="title"></h1>
         <p data-i18n="subtitle"></p>
-        <button id="btn-ar" class="primary" data-i18n="startAR"></button>
-        <button id="btn-3d" class="secondary" data-i18n="start3D"></button>
-        <p id="ar-note" class="note" data-i18n="noAR" hidden></p>
+        <div id="loading">
+          <div class="bar"><i id="load-bar"></i></div>
+          <span class="load-row"><span data-i18n="loading"></span> <b id="load-pct">0%</b></span>
+        </div>
+        <div id="menu" hidden>
+          <button id="btn-ar" class="primary" data-i18n="startAR"></button>
+          <button id="btn-3d" class="primary" data-i18n="start3D"></button>
+          <p id="ar-note" class="note" data-i18n="noAR" hidden></p>
+        </div>
         <button id="btn-lang" class="link" data-i18n="lang"></button>
       </div>
     </section>
 
     <section id="hud" hidden>
       <div class="top">
-        <button id="btn-home" class="icon" aria-label="Home">🏠</button>
+        <button id="btn-home" class="icon" aria-label="Home">⌂</button>
         <div id="progress">
           <span data-i18n="bottles"></span>
           <i class="slot gold"></i><i class="slot pink"></i><i class="slot purple"></i>
@@ -44,6 +49,7 @@
         <button id="btn-sound" class="icon" aria-label="Sound">🔊</button>
       </div>
       <div id="ar-hint" class="hint" data-i18n="findSurface" hidden></div>
+      <div id="tap-hint" class="tap-hint" data-i18n="tapHint"></div>
       <div id="bubble"></div>
       <div class="bottom">
         <button id="btn-size" class="pill" hidden></button>
@@ -52,7 +58,7 @@
       </div>
     </section>
   </div>
-
+  <!--/OVERLAY-->
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

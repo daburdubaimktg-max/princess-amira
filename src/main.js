@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildWorld } from './world.js';
 import { Sparkles, play, sound, unlockAudio } from './effects.js';
 import { STRINGS } from './i18n.js';
@@ -11,107 +10,136 @@ try { lang = localStorage.getItem('amira-lang') || 'ar'; } catch { /* storage bl
 const S = () => STRINGS[lang];
 const $ = (id) => document.getElementById(id);
 
+const SIZES = [0.3, 0.6, 1.0]; // tabletop, big, life-size (Amira ≈ 1 m tall)
+let sizeIndex = 0;
+
 function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = S()[el.dataset.i18n]; });
   $('btn-size').textContent = `${S().size}: ${S().sizes[sizeIndex]}`;
 }
+applyLang();
 
 // ---------- renderer / scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.0;
 renderer.xr.enabled = true;
 $('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.01, 200);
+camera.position.set(0.35, 1.15, 3.0);
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 50);
-camera.position.set(0, 1.25, 2.7);
-
-scene.add(new THREE.HemisphereLight(0xfff4e8, 0x7a6a8a, 0.9));
-const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
-sun.position.set(1.5, 3, 2);
+const hemi = new THREE.HemisphereLight(0xdcefff, 0xe8c99a, 0.35);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
+sun.position.set(2.2, 3.4, 2.4);
 sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
-sun.shadow.camera.left = sun.shadow.camera.bottom = -2;
-sun.shadow.camera.right = sun.shadow.camera.top = 2;
-sun.shadow.bias = -0.0005;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = sun.shadow.camera.bottom = -1.8;
+sun.shadow.camera.right = sun.shadow.camera.top = 1.8;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 10;
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+sun.shadow.radius = 4;
 scene.add(sun);
 scene.add(sun.target);
 
-// "anchor" holds the world; in AR it's moved to the tapped surface
 const anchor = new THREE.Group();
+anchor.visible = false;
 scene.add(anchor);
-const W = buildWorld();
-anchor.add(W.world);
 
-// shadow catcher so the island grounds itself on real tables in AR
-const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.ShadowMaterial({ opacity: 0.3 }));
-shadowCatcher.rotation.x = -Math.PI / 2;
-shadowCatcher.position.y = -0.1;
-shadowCatcher.receiveShadow = true;
-W.world.add(shadowCatcher);
-
-const sparkles = new Sparkles(800);
+const sparkles = new Sparkles(900);
 scene.add(sparkles.points);
 
-// 3D-mode-only backdrop: sky gradient + ocean
-const sky = (() => {
-  const c = document.createElement('canvas');
-  c.width = 2; c.height = 256;
-  const g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 0, 256);
-  grd.addColorStop(0, '#7ec8f2');
-  grd.addColorStop(0.55, '#ffd7e8');
-  grd.addColorStop(1, '#ffe9c7');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 2, 256);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-})();
-const ocean = new THREE.Mesh(new THREE.CircleGeometry(20, 64), new THREE.MeshStandardMaterial({ color: 0x48b9d4, roughness: 0.2, metalness: 0.1 }));
-ocean.rotation.x = -Math.PI / 2;
-ocean.position.y = -0.045;
-ocean.receiveShadow = true;
+// shadow catcher so the island grounds itself on real tables in AR
+const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.ShadowMaterial({ opacity: 0.35 }));
+shadowCatcher.rotation.x = -Math.PI / 2;
+shadowCatcher.position.y = -0.06;
+shadowCatcher.receiveShadow = true;
+shadowCatcher.visible = false;
+anchor.add(shadowCatcher);
+
+// ---------- loading ----------
+let W = null;
+let skyTex = null;
+const pmrem = new THREE.PMREMGenerator(renderer);
+const progress = { hdr: 0, models: 0 };
+function showProgress() {
+  const p = Math.round((progress.hdr * 0.25 + progress.models * 0.75) * 100);
+  $('load-bar').style.width = `${p}%`;
+  $('load-pct').textContent = `${p}%`;
+}
+
+const ready = (async () => {
+  // Poly Haven "Kloofendal 43d Clear (Pure Sky)", CC0, tone-mapped equirect
+  const hdrP = new THREE.TextureLoader().loadAsync(new URL('../assets/env/sky.jpg', import.meta.url).href, (e) => {
+    if (e.total) { progress.hdr = e.loaded / e.total; showProgress(); }
+  });
+  const worldP = buildWorld({ renderer, onProgress: (k) => { progress.models = k; showProgress(); } });
+  const [hdr, world] = await Promise.all([hdrP, worldP]);
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  hdr.colorSpace = THREE.SRGBColorSpace;
+  skyTex = hdr;
+  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  scene.environmentIntensity = 1.15;
+  W = world;
+  anchor.add(W.world);
+  anchor.visible = true;
+  set3DBackdrop(true);
+  progress.hdr = progress.models = 1;
+  showProgress();
+  $('loading').hidden = true;
+  $('menu').hidden = false;
+})().catch((err) => {
+  console.error(err);
+  $('load-pct').textContent = S().loadError;
+});
 
 function set3DBackdrop(on) {
-  scene.background = on ? sky : null;
-  scene.fog = on ? new THREE.Fog(0xffe2ec, 6, 18) : null;
-  if (on) W.world.add(ocean); else W.world.remove(ocean);
+  scene.background = on ? skyTex : null;
+  scene.backgroundBlurriness = 0.0;
+  scene.backgroundIntensity = 1.0;
+  W?.setSeaVisible(on);
   shadowCatcher.visible = !on;
 }
 
-// ---------- orbit controls (3D mode) ----------
+// ---------- orbit controls (3D mode + start-screen showcase) ----------
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0.45, 0);
+controls.target.set(0, 0.55, 0);
 controls.enableDamping = true;
-controls.minDistance = 0.8;
-controls.maxDistance = 5;
-controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 1.1;
+controls.maxDistance = 6;
+controls.maxPolarAngle = Math.PI * 0.47;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 0.4;
+controls.autoRotateSpeed = 0.35;
 controls.enabled = false;
 
-// ---------- sizing ----------
-const SIZES = [0.3, 0.6, 1.0]; // tabletop, big, life-size (Amira ≈ 1m tall)
-let sizeIndex = 0;
+function frameCamera() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
+  const dist = Math.max(3.0, 1.15 / Math.tan(halfH));
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  camera.position.copy(controls.target).addScaledVector(dir, dist);
+  controls.maxDistance = Math.max(6, dist * 1.5);
+}
+frameCamera();
 
-// ---------- game state ----------
+// ---------- game ----------
 const game = { collected: 0, phase: 'intro', mode: null };
 const tweens = [];
-function tween(dur, fn, done) { tweens.push({ t: 0, dur, fn, done }); }
+const tween = (dur, fn, done) => tweens.push({ t: 0, dur, fn, done });
 
 let bubbleTimer = 0;
-function say(text, ms = 3800) {
+function say(text, ms = 4200) {
   const b = $('bubble');
   b.textContent = text;
   b.classList.add('show');
@@ -125,63 +153,79 @@ function renderProgress() {
 
 const _v = new THREE.Vector3();
 const _w = new THREE.Vector3();
+const S_ = () => anchor.scale.x; // effects scale with the world in AR
 
 function collectBottle(b) {
-  if (b.userData.collected || game.phase === 'finale') return;
+  if (b.userData.collected || game.phase !== 'play') return;
   b.userData.collected = true;
   play('collect');
-  const i = b.userData.index;
-  say(S().bottleFound[i]);
-  sparkles.burst(b.getWorldPosition(_v), [b.userData.color, 0xffffff], 50, { speed: 0.5 * anchor.scale.x, up: 0.2 * anchor.scale.x });
+  say(S().bottleFound[b.userData.index]);
+  sparkles.burst(b.getWorldPosition(_v), [b.userData.color, 0xffffff], 60, { speed: 0.5 * S_(), up: 0.2 * S_() });
   const from = b.position.clone();
-  const to = new THREE.Vector3(0, 1.05, 0.12);
-  tween(1.0, (k) => {
+  const to = new THREE.Vector3(0, 1.15, 0.15);
+  tween(1.1, (k) => {
     const e = k * k * (3 - 2 * k);
     b.position.lerpVectors(from, to, e);
     b.position.y += Math.sin(k * Math.PI) * 0.3;
-    b.rotation.y += 0.3;
-    b.scale.setScalar(1.15 * (1 - e * 0.6));
+    b.rotation.y += 0.25;
+    b.scale.setScalar(1 - e * 0.5);
   }, () => {
-    // pour magic onto Amira's hair
     b.visible = false;
     game.collected++;
     renderProgress();
-    W.amira.setHairLevel(game.collected);
-    W.amira.twirl();
     play('grow');
-    const s = anchor.scale.x;
-    sparkles.burst(W.amira.headWorld(), [0xffd54f, b.userData.color, 0xffffff], 90, { speed: 0.7 * s, up: 0.1 * s });
-    if (game.collected === 3) setTimeout(finale, 1500);
+    W.amira.play(game.collected < 3 ? 'wave' : 'cheer');
+    // magic pours over Amira's hair
+    const head = W.amira.headWorld().clone();
+    for (let n = 0; n < 140; n++) {
+      const p = head.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, Math.random() * 0.1, -Math.random() * 0.15).multiplyScalar(S_()));
+      sparkles.emit(p, n % 3 ? b.userData.color : 0xffe9a8, { speed: 0.15 * S_(), up: -0.25 * S_(), life: 1.6 });
+    }
+    if (game.collected === 3) setTimeout(finale, 2200);
   });
 }
 
 function finale() {
   game.phase = 'finale';
-  say(S().allFound, 3200);
-  W.amira.cast();
+  say(S().allFound, 3400);
+  const castDur = W.amira.play('cast') || 2;
   const cloud = W.cloud;
-  const s = anchor.scale.x;
-  // golden hair-magic stream from Amira to the cloud
-  tween(1.6, (k) => {
+  tween(Math.max(1.6, castDur * 0.8), (k) => {
     const a = W.amira.headWorld().clone();
-    const c = cloud.getWorldPosition(_w);
-    for (let n = 0; n < 4; n++) {
+    a.y -= 0.25 * S_();
+    const c = cloud.getWorldPosition(_w).clone();
+    c.y += 0.15 * S_();
+    for (let n = 0; n < 5; n++) {
       const p = a.clone().lerp(c, Math.random() * k);
-      sparkles.emit(p, n % 2 ? 0xffd54f : 0xff8fc8, { speed: 0.15 * s, up: 0, life: 0.6 });
+      sparkles.emit(p, n % 2 ? 0xffd54f : 0xff8fc8, { speed: 0.12 * S_(), up: 0, life: 0.7 });
     }
-    cloud.scale.setScalar(1 - k * 0.35);
+    cloud.scale.setScalar(1 - k * 0.4);
     cloud.rotation.z = Math.sin(k * 40) * 0.15;
   }, () => {
     play('win');
     cloud.userData.defeated = true;
-    sparkles.burst(cloud.getWorldPosition(_w), [0xb06cff, 0xffd54f, 0xff8fc8, 0x7fe7ff, 0xffffff], 200, { speed: 1.0 * s, up: 0.2 * s, life: 2 });
+    sparkles.burst(cloud.getWorldPosition(_w), [0xb06cff, 0xffd54f, 0xff8fc8, 0x7fe7ff, 0xffffff], 260, { speed: 1.0 * S_(), up: 0.25 * S_(), life: 2.2 });
     cloud.visible = false;
-    W.amira.cheer();
-    W.friends.forEach((f) => f.cheer());
-    say(S().win, 6000);
+    W.amira.play('cheer');
+    W.friends.forEach((f) => f.play('cheer'));
+    say(S().win, 7000);
+    showLineup();
     game.phase = 'won';
     $('btn-replay').hidden = false;
   });
+}
+
+// the three real packs rise on a plinth in front of Amira: the brand moment
+function showLineup() {
+  const L = W.lineup;
+  L.visible = true;
+  tween(1.4, (k) => {
+    const e = 1 - Math.pow(1 - k, 3);
+    L.scale.setScalar(Math.max(0.001, e));
+    L.position.y = (1 - e) * -0.1;
+    L.rotation.y = (1 - e) * Math.PI;
+  });
+  setTimeout(() => sparkles.burst(L.getWorldPosition(_v).add(new THREE.Vector3(0, 0.2 * S_(), 0)), [0xffd54f, 0xe8408f, 0x8a4fd8, 0xffffff], 160, { speed: 0.6 * S_(), up: 0.3 * S_(), life: 1.8 }), 900);
 }
 
 function resetGame() {
@@ -191,16 +235,16 @@ function resetGame() {
     b.userData.collected = false;
     b.visible = true;
     b.position.copy(b.userData.home);
-    b.scale.setScalar(1.15);
+    b.scale.setScalar(1);
   });
+  W.lineup.visible = false;
   W.cloud.visible = true;
   W.cloud.scale.setScalar(1);
   W.cloud.userData.defeated = false;
-  W.amira.setHairLevel(0);
   renderProgress();
   $('btn-replay').hidden = true;
-  say(S().intro, 6000);
-  W.amira.wave();
+  say(S().intro, 6500);
+  W.amira.play('wave');
 }
 
 function onTapObject(obj) {
@@ -209,34 +253,36 @@ function onTapObject(obj) {
   if (!o) return false;
   const k = o.userData.kind;
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const s = anchor.scale.x;
   if (k === 'bottle') collectBottle(o);
   else if (k === 'amira') {
     play('tap');
-    if (!W.amira.busy) (Math.random() < 0.5 ? W.amira.twirl : W.amira.wave)();
+    W.amira.play(Math.random() < 0.5 ? 'wave' : 'cheer');
     say(game.phase === 'won' ? S().win : pick(S().amiraLines));
-    sparkles.burst(W.amira.headWorld(), [0xffd54f, 0xff8fc8], 30, { speed: 0.4 * s, up: 0.2 * s });
+    sparkles.burst(W.amira.headWorld(), [0xffd54f, 0xff8fc8], 40, { speed: 0.4 * S_(), up: 0.2 * S_() });
   } else if (k === 'friend') {
     play('tap');
-    W.friends[o.userData.index].wave();
+    W.friends[o.userData.index].play('cheer');
     say(pick(S().friendLines));
   } else if (k === 'cloud') {
     play('cloud');
     say(pick(S().cloudLines));
-    sparkles.burst(o.getWorldPosition(_v), 0xb06cff, 30, { speed: 0.4 * s });
+    sparkles.burst(o.getWorldPosition(_v), 0xb06cff, 40, { speed: 0.4 * S_() });
+  } else if (k === 'product') {
+    play('tap');
+    say(S().productLines[o.userData.index ?? Math.floor(Math.random() * 3)], 4000);
   } else if (k === 'ball') {
     play('tap');
     say(S().ball, 1500);
-    const b = o;
-    tween(0.8, (t) => { b.position.y = 0.06 + Math.sin(t * Math.PI) * 0.25; b.rotation.x += 0.2; });
+    tween(0.8, (t) => { o.position.y = 0.07 + Math.sin(t * Math.PI) * 0.3; o.rotation.x += 0.2; });
   } else return false;
   return true;
 }
 
 const raycaster = new THREE.Raycaster();
 function pickFrom(origin, dir) {
+  if (!W) return false;
   raycaster.set(origin, dir);
-  const hits = raycaster.intersectObject(W.world, true).filter((h) => h.object.visible && h.object !== shadowCatcher && h.object !== ocean);
+  const hits = raycaster.intersectObject(W.world, true).filter((h) => h.object.visible && h.object.name !== 'sea' && h.object.name !== 'lagoon');
   for (const h of hits) if (onTapObject(h.object)) return true;
   return false;
 }
@@ -249,9 +295,11 @@ function start3D() {
   $('btn-size').hidden = true;
   $('btn-exit').hidden = true;
   set3DBackdrop(true);
-  anchor.visible = true;
+  anchor.position.set(0, 0, 0);
+  anchor.rotation.set(0, 0, 0);
   anchor.scale.setScalar(1);
   controls.enabled = true;
+  controls.autoRotate = false;
   resetGame();
 }
 
@@ -260,20 +308,17 @@ renderer.domElement.addEventListener('pointerdown', (e) => { downAt = { x: e.cli
 renderer.domElement.addEventListener('pointerup', (e) => {
   if (game.mode !== '3d' || !downAt) return;
   if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 8) return; // was a drag
-  const ndc = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  const r = renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
-  pickFrom(raycaster.ray.origin, raycaster.ray.direction);
-  controls.autoRotate = false;
+  pickFrom(raycaster.ray.origin.clone(), raycaster.ray.direction.clone());
 });
 
 // ---------- AR mode (WebXR hit-test) ----------
 const reticle = new THREE.Mesh(
-  new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI / 2),
+  new THREE.RingGeometry(0.07, 0.09, 40).rotateX(-Math.PI / 2),
   new THREE.MeshBasicMaterial({ color: 0xffd54f }),
 );
-const reticleCrown = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 5), new THREE.MeshBasicMaterial({ color: 0xff8fc8 }));
-reticleCrown.position.y = 0.03;
-reticle.add(reticleCrown);
 reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
@@ -285,25 +330,16 @@ scene.add(controller);
 
 controller.addEventListener('select', () => {
   if (game.mode !== 'ar') return;
-  if (!placed) {
-    if (!reticle.visible) return;
-    placeWorld();
-    return;
-  }
+  if (!placed) { if (reticle.visible) placeWorld(); return; }
   const m = new THREE.Matrix4().extractRotation(controller.matrixWorld);
-  const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-  const dir = new THREE.Vector3(0, 0, -1).applyMatrix4(m);
-  pickFrom(origin, dir);
+  pickFrom(new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld), new THREE.Vector3(0, 0, -1).applyMatrix4(m));
 });
 
 function placeWorld() {
   const p = new THREE.Vector3();
-  const q = new THREE.Quaternion();
-  const sc = new THREE.Vector3();
-  reticle.matrix.decompose(p, q, sc);
+  reticle.matrix.decompose(p, new THREE.Quaternion(), new THREE.Vector3());
   anchor.position.copy(p);
-  const cam = renderer.xr.getCamera();
-  const cp = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+  const cp = new THREE.Vector3().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld);
   anchor.rotation.set(0, Math.atan2(cp.x - p.x, cp.z - p.z), 0);
   anchor.scale.setScalar(SIZES[sizeIndex]);
   anchor.visible = true;
@@ -311,7 +347,7 @@ function placeWorld() {
   reticle.visible = false;
   $('ar-hint').hidden = true;
   play('place');
-  sparkles.burst(p.clone().add(new THREE.Vector3(0, 0.1, 0)), [0xffd54f, 0xff8fc8, 0xffffff], 120, { speed: 0.5, up: 0.3 });
+  sparkles.burst(p.clone().add(new THREE.Vector3(0, 0.1, 0)), [0xffd54f, 0xff8fc8, 0xffffff], 140, { speed: 0.5, up: 0.3 });
   resetGame();
 }
 
@@ -330,8 +366,7 @@ async function startAR() {
     placed = false;
     renderer.xr.setReferenceSpaceType('local');
     await renderer.xr.setSession(session);
-    const viewer = await session.requestReferenceSpace('viewer');
-    hitTestSource = await session.requestHitTestSource({ space: viewer });
+    hitTestSource = await session.requestHitTestSource({ space: await session.requestReferenceSpace('viewer') });
     $('start').hidden = true;
     $('hud').hidden = false;
     $('btn-size').hidden = false;
@@ -346,6 +381,9 @@ async function startAR() {
       anchor.position.set(0, 0, 0);
       anchor.rotation.set(0, 0, 0);
       anchor.scale.setScalar(1);
+      anchor.visible = true;
+      set3DBackdrop(true);
+      controls.autoRotate = true;
     });
   } catch (err) {
     console.error(err);
@@ -353,14 +391,11 @@ async function startAR() {
   }
 }
 
-// taps on HUD buttons shouldn't also count as AR "select" taps
-$('overlay').addEventListener('beforexrselect', (e) => {
-  if (e.target.closest('button')) e.preventDefault();
-});
+$('overlay').addEventListener('beforexrselect', (e) => { if (e.target.closest('button')) e.preventDefault(); });
 
 // ---------- UI wiring ----------
 $('btn-ar').onclick = startAR;
-$('btn-3d').onclick = () => { unlockAudio(); start3D(); };
+$('btn-3d').onclick = async () => { unlockAudio(); await ready; if (W) start3D(); };
 $('btn-lang').onclick = () => {
   lang = lang === 'ar' ? 'en' : 'ar';
   try { localStorage.setItem('amira-lang', lang); } catch { /* ignore */ }
@@ -370,8 +405,7 @@ $('btn-size').onclick = () => {
   sizeIndex = (sizeIndex + 1) % SIZES.length;
   applyLang();
   if (placed) {
-    const from = anchor.scale.x;
-    const to = SIZES[sizeIndex];
+    const from = anchor.scale.x, to = SIZES[sizeIndex];
     tween(0.5, (k) => anchor.scale.setScalar(from + (to - from) * k));
   }
 };
@@ -385,31 +419,20 @@ $('btn-home').onclick = () => {
   if (renderer.xr.isPresenting) { renderer.xr.getSession().end(); return; }
   game.mode = null;
   controls.enabled = false;
+  controls.autoRotate = true;
   $('hud').hidden = true;
   $('start').hidden = false;
 };
 
 if (navigator.xr?.isSessionSupported) {
-  navigator.xr.isSessionSupported('immersive-ar').then((ok) => {
-    $('btn-ar').hidden = !ok;
-    $('ar-note').hidden = ok;
-  }).catch(() => { $('ar-note').hidden = false; });
+  navigator.xr.isSessionSupported('immersive-ar')
+    .then((ok) => { $('btn-ar').hidden = !ok; $('ar-note').hidden = ok; })
+    .catch(() => { $('ar-note').hidden = false; });
 } else {
   $('btn-ar').hidden = true;
   $('ar-note').hidden = false;
 }
 
-// keep the whole island in frame on tall phone screens too
-function frameCamera() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
-  const dist = Math.max(2.7, 1.0 / Math.tan(halfH));
-  const dir = camera.position.clone().sub(controls.target).normalize();
-  camera.position.copy(controls.target).addScaledVector(dir, dist);
-  controls.maxDistance = Math.max(5, dist * 1.4);
-}
-frameCamera();
 window.addEventListener('resize', () => {
   frameCamera();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -425,10 +448,8 @@ renderer.setAnimationLoop((_, frame) => {
   if (frame && hitTestSource && !placed) {
     const hits = frame.getHitTestResults(hitTestSource);
     if (hits.length) {
-      const pose = hits[0].getPose(renderer.xr.getReferenceSpace());
       reticle.visible = true;
-      reticle.matrix.fromArray(pose.transform.matrix);
-      reticleCrown.rotation.y = t * 2;
+      reticle.matrix.fromArray(hits[0].getPose(renderer.xr.getReferenceSpace()).transform.matrix);
     } else reticle.visible = false;
   }
 
@@ -440,30 +461,33 @@ renderer.setAnimationLoop((_, frame) => {
     if (k >= 1) { tweens.splice(i, 1); tw.done?.(); }
   }
 
-  if (anchor.visible) {
+  if (W && anchor.visible) {
     W.update(t, dt);
-    // ambient sparkles drifting off Amira's hair + the glowing bottles
     ambientT += dt;
-    if (ambientT > 0.08) {
+    if (ambientT > 0.09) {
       ambientT = 0;
-      const s = anchor.scale.x;
-      sparkles.emit(W.amira.hairTipWorld(), 0xffe082, { speed: 0.08 * s, up: 0.05 * s, life: 1.4 });
-      for (const b of W.bottles) if (b.visible && !b.userData.collected) {
-        sparkles.emit(b.getWorldPosition(_v), b.userData.color, { speed: 0.12 * s, up: 0.06 * s, life: 1 });
+      const s = S_();
+      // Amira's hair shimmer grows with each bottle collected
+      const shimmer = 1 + game.collected * 2;
+      for (let n = 0; n < shimmer; n++) {
+        const h = W.amira.headWorld().clone();
+        h.add(new THREE.Vector3((Math.random() - 0.5) * 0.3, -Math.random() * 0.5, -0.08 - Math.random() * 0.06).multiplyScalar(s));
+        sparkles.emit(h, n % 2 ? 0xffe082 : 0xfff6d6, { speed: 0.05 * s, up: 0.04 * s, life: 1.2 });
       }
-      if (W.cloud.visible) sparkles.emit(W.cloud.getWorldPosition(_v), 0x9b4dff, { speed: 0.1 * s, up: -0.1 * s, life: 1.2 });
+      for (const b of W.bottles) if (b.visible && !b.userData.collected) {
+        sparkles.emit(b.getWorldPosition(_v).add(new THREE.Vector3(0, 0.1 * s, 0)), b.userData.color, { speed: 0.12 * s, up: 0.06 * s, life: 1 });
+      }
+      if (W.cloud.visible) sparkles.emit(W.cloud.getWorldPosition(_v), 0x9b4dff, { speed: 0.12 * s, up: -0.1 * s, life: 1.2 });
     }
   }
-  sparkles.points.material.size = 0.045 * (game.mode === 'ar' ? anchor.scale.x * 1.4 : 1);
+  sparkles.points.material.size = 0.04 * (game.mode === 'ar' ? anchor.scale.x * 1.4 : 1);
   sparkles.update(dt);
 
-  if (controls.enabled) controls.update();
+  if (!renderer.xr.isPresenting) controls.update();
   renderer.render(scene, camera);
 });
 
-applyLang();
-
 // handy for automated screenshots: open with ?debug
 if (new URLSearchParams(location.search).has('debug')) {
-  window.amiraDebug = { W, camera, controls, collectBottle, game };
+  window.amiraDebug = { get W() { return W; }, camera, controls, collectBottle, game, ready, start3D };
 }

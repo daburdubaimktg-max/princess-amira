@@ -1,48 +1,56 @@
 # Princess Amira AR World 👑
 
-A browser-based augmented-reality world for **Princess Amira** from the Dabur Amla Kids cartoon series. There's no app to install: the child opens a link, places Amira's palace-beach island on a table or the floor, and helps her collect three magic bottles. The bottles grow her long, strong hair, and her hair magic chases away the Tangle Cloud.
+A browser-based augmented-reality world for **Princess Amira** from the Dabur Amla Kids cartoon series. There's no app to install: a child opens a link, places Amira's palace-beach island on a table or the floor, and helps her find her three **Dabur Amla Kids** products (Nourishing Hair Oil, Detangler, Shampoo). Then her hair magic chases away the Tangle Cloud, and the products rise on a plinth for the finale.
 
-![Amira island](docs/screenshots/island.png) ![Finale](docs/screenshots/finale.png)
+![Amira's island](docs/screenshots/island.jpg)
+![Gameplay → win → product line-up](docs/screenshots/gameplay.jpg)
 
-See [`docs/CHARACTER_BIBLE.md`](docs/CHARACTER_BIBLE.md) for who Amira is, her look, and the AR story.
+See [`docs/CHARACTER_BIBLE.md`](docs/CHARACTER_BIBLE.md) for who Amira is and the AR story.
+
+## What's in the world
+| Asset | How it was made |
+|---|---|
+| **Amira** (rigged, animated: idle, wave, cheer, spell-cast) | Frames from the series → clean turnaround ([`docs/reference/amira_turnaround.jpg`](docs/reference/amira_turnaround.jpg)) → Meshy 7 image-to-3D (textured, PBR, auto-rig). Her leg bones are locked so the ball gown never tears. |
+| **Two friends** (blue headband, ponytail) | Same pipeline from the beach-episode frame |
+| **Palace, palm trees, Tangle Cloud** | Meshy text-to-3D, PBR |
+| **Hair Oil, Detangler, Shampoo** | Built from the **official packshots**: the silhouette is traced into a 3D lathe and the packshot becomes the front label, so the logo and copy are pixel-exact (`tools/build_products.py`, `src/products.js`) |
+| Sky / lighting | Poly Haven *Kloofendal 43d Clear* sky (CC0) as environment light |
+| Sand, sea | Poly Haven photoscanned sand (CC0), three.js reflective `Water` |
+
+All models are compressed for phones (quantized geometry, WebP textures): about 26MB in total.
 
 ## Features
-- **WebXR AR** (`immersive-ar` + hit-testing): find a surface, tap to place the island, then tap things in the scene to interact.
-- **Size switch** in AR: Tabletop, Big, or **Life-size** (Amira is about 1 m tall, so kids can stand next to her).
-- **3D mode** fallback for iPhone, desktop and anything else without WebXR AR. You can orbit, zoom and tap.
-- **Mini-game:** collect 3 bottles (gold, pink, purple). Amira's hair grows and shines after each one, then she casts hair magic and the cloud is defeated, followed by a celebration.
-- **Interactions:** Amira twirls, waves and talks; her friends cheer; the cloud taunts; the beach ball bounces.
-- **Arabic-first, bilingual** (AR/EN, RTL aware). Sparkles and sounds are generated in the browser, so there are **no asset files**.
+- **WebXR AR** (`immersive-ar` + hit-testing): find a surface, tap to place, tap to play. Shadows land on the real table.
+- **Sizes:** Tabletop, Big, or **Life-size** (Amira is about 1m tall).
+- **3D mode** for iPhone and desktop: orbit, zoom, tap.
+- **Arabic-first, bilingual** (AR/EN, RTL aware). Sparkles and sounds are generated in the browser.
 
 ## Run locally
 ```bash
-python3 -m http.server 8080
-# open http://localhost:8080
+python3 -m http.server 8080   # open http://localhost:8080
 ```
-WebXR AR needs **HTTPS** (or `localhost`). To test on a phone, deploy to any static HTTPS host (GitHub Pages, Netlify, Vercel) or use a tunnel such as `npx localtunnel --port 8080`, then open the link in **Chrome on an ARCore-supported Android phone**.
+WebXR AR needs **HTTPS**: deploy to GitHub Pages, Netlify or Vercel, then open the link in **Chrome on an ARCore Android phone**. Add `?debug` to expose `window.amiraDebug` for automated screenshots.
 
-Add `?debug` to the URL to expose `window.amiraDebug` for automated screenshots.
-
-## Device support
-| Device | Experience |
+## Asset pipeline (`tools/`)
+| Script | Purpose |
 |---|---|
-| Android + Chrome (ARCore) | Full AR |
-| iPhone / iPad (Safari) | 3D mode. iOS Safari doesn't support WebXR AR yet; see the roadmap. |
-| Desktop | 3D mode |
+| `build_products.py oil=… detangler=… shampoo=…` | Packshot (white background) → label atlas + silhouette profile |
+| `optimize.sh in.glb out.glb [size]` | Compress a generated GLB for the web |
+| `animonly.mjs rigged.glb out.glb` | Keep only the skeleton + clip from an extra animation export |
+| `tojson.mjs in.glb outDir` | Republish a GLB as glTF JSON (used for hosts that don't serve `.glb`) |
 
 ## Code map
 | File | What it does |
 |---|---|
-| `index.html`, `styles.css` | Start screen, HUD, speech bubble (also the WebXR DOM overlay) |
-| `src/main.js` | Renderer, AR session and hit-test, 3D mode, tap picking, game flow |
-| `src/amira.js` | Procedural 3D Amira and friends: blink, sway, wave, twirl, cheer, cast, hair growth |
-| `src/world.js` | Island, palace, palms, picnic, bottles, Tangle Cloud |
+| `index.html`, `styles.css` | Start card, loading bar, HUD, speech bubble (also the WebXR DOM overlay) |
+| `src/main.js` | Renderer, sky lighting, AR session + hit-test, 3D mode, game flow, finale |
+| `src/world.js` | Loads and places every asset; island, sea, characters + animation mixer |
+| `src/products.js` | Real product bottles from packshot profiles |
 | `src/effects.js` | Sparkle particles and synthesized sounds |
 | `src/i18n.js` | All Arabic and English copy |
 
-## Roadmap / next steps
-1. **Use the studio's real Amira model.** Export the series rig as a `.glb` (with idle, wave, twirl and cheer clips) and load it with `GLTFLoader` in place of `buildAmira()`. The API in `amira.js` is already shaped for this.
-2. **iOS AR:** ship a USDZ of the island for AR Quick Look, or use a WebAR SDK (8th Wall / Zappar) for full iOS parity.
-3. **Voice lines** recorded by Amira's voice actor in place of the text bubbles.
-4. **Photo mode** in Life-size, with a branded frame for social sharing.
-5. More episodes as new "islands": the night battle scene, the palace, the market.
+## Next steps
+1. **Swap in the studio's own Amira rig** if one exists. The generated model is close to on-model, but the series' master asset will always win. Drop it in as `assets/models/amira.glb`.
+2. **Real back-label art** for the three packs: the backs are currently plain bottle colour.
+3. **iOS AR** via a USDZ export of the island (AR Quick Look) or a WebAR SDK.
+4. **Voice lines** recorded by Amira's voice actor.

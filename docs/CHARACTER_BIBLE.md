@@ -28,9 +28,17 @@ Source: the Dabur Amla Arabia short *"👑 أميرة وشعرها القوي و
 - **Dark/purple magic scene:** a night setting where Amira faces an antagonist.
 - **Product hero:** three Amla Kids bottles in **gold, pink and purple**, each with a crown cap.
 
+## Products in the world
+The three packs from the range are the magic items in the game. They are built from the official packshots:
+- **Nourishing Hair Oil** (gold crown cap): "for longer, stronger & softer hair"
+- **Nourishing Detangler** (pink spray): "easy combing for smooth, soft hair"
+- **Nourishing Shampoo** (purple crown cap): "gentle cleansing for strong & long hair"
+
+The in-game product lines quote these pack claims word for word. Check them with brand and legal before launch.
+
 ## AR story: "Amira and the Tangle Cloud" (proposed)
 The **Tangle Cloud (غيمة التشابك)** is a grumpy purple storm cloud that wants to tangle everyone's hair. It's a stand-in for the purple-magic antagonist; swap in the series' real villain if there is one.
-1. Amira greets the child and asks for help finding the **three magic bottles** hidden around her island. One is above the palace dome, one is in the tall palm and one is over the water.
+1. Amira greets the child and asks for help finding the **three Amla Kids products** hidden around her island. One is above the palace dome, one is in the tall palm and one is over the water.
 2. Each bottle flies to Amira, pours its magic into her hair, and her hair **grows longer and shines**.
 3. With all three bottles collected, Amira casts **hair magic**, a golden stream that blows the Tangle Cloud away.
 4. Everyone cheers and the closing line plays: *"That's Dabur Amla Kids magic 👑✨"*.
