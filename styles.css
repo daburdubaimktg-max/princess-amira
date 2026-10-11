@@ -1,0 +1,121 @@
+/* One look, on purpose: a sunlit storybook UI floating over the 3D scene.
+   Tokens are fixed (not theme-switched) because the UI sits on the 3D sky. */
+:root {
+  --rose: #c8456a;
+  --rose-2: #e57a9b;
+  --gold: #d9a23a;
+  --gold-hi: #f6d68a;
+  --plum: #5b2d6e;
+  --ink: #3b1d2c;
+  --glass: rgba(255, 249, 244, 0.86);
+  --glass-line: rgba(217, 162, 58, 0.55);
+  --display: 'Fredoka', 'Baloo Bhaijaan 2', system-ui, sans-serif;
+  --body: 'Baloo Bhaijaan 2', 'Fredoka', system-ui, sans-serif;
+  color-scheme: light;
+}
+[dir='rtl'] { --display: 'Baloo Bhaijaan 2', 'Fredoka', system-ui, sans-serif; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #9fd3ea; color: var(--ink); font-family: var(--body); }
+#stage, #stage canvas { position: fixed; inset: 0; display: block; }
+#overlay { position: fixed; inset: 0; pointer-events: none; }
+#overlay button, #overlay .card { pointer-events: auto; }
+[hidden] { display: none !important; }
+button { font: inherit; cursor: pointer; border: 0; color: inherit; }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+/* ---------- start card (scene keeps rotating behind it) ---------- */
+#start {
+  position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(59, 29, 44, 0.35), rgba(59, 29, 44, 0) 45%);
+}
+.card {
+  width: min(440px, 100%); background: var(--glass); backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border-radius: 26px; padding: 22px 22px 14px; text-align: center;
+  border: 1.5px solid var(--glass-line);
+  box-shadow: 0 24px 60px rgba(59, 29, 44, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.eyebrow { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+[dir='rtl'] .eyebrow { letter-spacing: 0; font-size: 15px; }
+h1 { font-family: var(--display); margin: 4px 0 6px; font-size: clamp(26px, 7vw, 32px); line-height: 1.15; color: var(--rose); text-wrap: balance; }
+.card p { margin: 0 auto 14px; font-size: 16px; line-height: 1.5; max-width: 34ch; }
+#menu { display: grid; gap: 10px; }
+.primary {
+  padding: 14px 18px; border-radius: 999px; font-size: 19px; font-weight: 800; color: #fff;
+  background: linear-gradient(180deg, var(--rose-2), var(--rose));
+  box-shadow: 0 6px 18px rgba(200, 69, 106, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.15s;
+}
+#btn-ar { background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: var(--ink); box-shadow: 0 6px 18px rgba(217, 162, 58, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+.primary:active { transform: scale(0.97); }
+.link { background: none; color: var(--plum); text-decoration: underline; font-size: 15px; padding: 10px; }
+.note { font-size: 14px !important; background: rgba(229, 122, 155, 0.15); border-radius: 14px; padding: 10px; margin: 0 !important; max-width: none !important; }
+
+@media (min-width: 900px) {
+  #start { justify-content: flex-start; align-items: center; padding-inline: 48px; background: linear-gradient(to right, rgba(59, 29, 44, 0.3), rgba(59, 29, 44, 0) 45%); }
+  .card { width: 400px; }
+}
+
+#loading { display: grid; gap: 8px; padding: 6px 4px 4px; }
+.bar { height: 10px; border-radius: 99px; background: rgba(91, 45, 110, 0.12); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--rose-2)); border-radius: inherit; transition: width 0.3s; }
+.load-row { font-size: 15px; color: var(--plum); font-variant-numeric: tabular-nums; }
+
+/* ---------- HUD ---------- */
+#hud { position: absolute; inset: 0; }
+.top {
+  position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; right: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.icon {
+  width: 46px; height: 46px; border-radius: 50%; background: var(--glass); font-size: 22px; line-height: 1;
+  border: 1.5px solid var(--glass-line); box-shadow: 0 4px 14px rgba(59, 29, 44, 0.18);
+}
+#progress {
+  display: flex; align-items: center; gap: 7px; background: var(--glass); padding: 8px 14px;
+  border-radius: 999px; font-weight: 700; font-size: 15px; border: 1.5px solid var(--glass-line);
+  box-shadow: 0 4px 14px rgba(59, 29, 44, 0.18);
+}
+.slot {
+  width: 16px; height: 24px; border-radius: 5px 5px 8px 8px; border: 2px dashed rgba(91, 45, 110, 0.35);
+  display: inline-block; transition: transform 0.35s cubic-bezier(.3, 1.6, .5, 1), background 0.3s;
+}
+.slot.got { border-style: solid; transform: scale(1.18); }
+.slot.gold.got { background: #f2c14e; border-color: #b8862a; }
+.slot.pink.got { background: #f0619a; border-color: #b83a6c; }
+.slot.purple.got { background: #9a63e0; border-color: #5f37a0; }
+
+.hint {
+  position: absolute; left: 16px; right: 16px; top: 42%; margin: 0 auto; max-width: 420px; text-align: center;
+  font-size: 17px; font-weight: 700; background: var(--glass); border-radius: 18px; padding: 14px;
+  border: 1.5px solid var(--glass-line);
+}
+.tap-hint {
+  position: absolute; left: 0; right: 0; top: calc(70px + env(safe-area-inset-top, 0px)); text-align: center;
+  font-size: 14px; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); font-weight: 700;
+}
+
+#bubble {
+  position: absolute; left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  margin: 0 auto; max-width: 460px; background: #fffaf6; border: 2.5px solid var(--rose-2); border-radius: 22px;
+  padding: 12px 16px; font-size: 17px; font-weight: 700; text-align: center; line-height: 1.45;
+  box-shadow: 0 10px 26px rgba(59, 29, 44, 0.25);
+  opacity: 0; transform: translateY(12px) scale(0.96); transition: opacity 0.25s, transform 0.25s;
+}
+#bubble.show { opacity: 1; transform: none; }
+
+.bottom {
+  position: absolute; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 12px; right: 12px;
+  display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+}
+.pill {
+  padding: 10px 18px; border-radius: 999px; background: var(--glass); font-weight: 700; font-size: 16px;
+  border: 1.5px solid var(--glass-line); box-shadow: 0 4px 14px rgba(59, 29, 44, 0.18);
+}
+.pill.primary { color: #fff; background: linear-gradient(180deg, var(--rose-2), var(--rose)); border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  #bubble, .slot, .primary { transition: none; }
+}
