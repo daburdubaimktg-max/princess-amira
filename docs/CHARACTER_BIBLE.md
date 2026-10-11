@@ -39,8 +39,8 @@ The in-game product lines quote these pack claims word for word. Check them with
 ## AR story: "Amira and the Tangle Cloud" (proposed)
 The **Tangle Cloud (غيمة التشابك)** is a grumpy purple storm cloud that wants to tangle everyone's hair. It's a stand-in for the purple-magic antagonist; swap in the series' real villain if there is one.
 1. Amira greets the child and asks for help finding the **three Amla Kids products** hidden around her island. One is above the palace dome, one is in the tall palm and one is over the water.
-2. Each bottle flies to Amira, pours its magic into her hair, and her hair **grows longer and shines**.
-3. With all three bottles collected, Amira casts **hair magic**, a golden stream that blows the Tangle Cloud away.
-4. Everyone cheers and the closing line plays: *"That's Dabur Amla Kids magic 👑✨"*.
+2. Each product flies to Amira and pours its magic over her hair, which **shimmers more brightly** with every pack found.
+3. With all three products collected, Amira casts **hair magic**, a golden stream that blows the Tangle Cloud away.
+4. Everyone cheers, the three packs rise on a gold-trimmed plinth, and the closing line plays: *"That's Dabur Amla Kids magic 👑✨"*.
 
 Tapping Amira, her friends, the cloud or the beach ball triggers lines, twirls, waves and sparkles. The copy is bilingual (Arabic default, English toggle) in `src/i18n.js`.
