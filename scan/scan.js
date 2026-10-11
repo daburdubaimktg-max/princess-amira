@@ -696,6 +696,7 @@ async function chapter(n) {
   game.got = 0;
   game.spawnT = 0;
   renderHud();
+  $('bars').classList.add('on');
   if (n === 2) {
     // the sky turns: purple storm rolls in
     music.start('storm');
@@ -726,6 +727,8 @@ async function chapter(n) {
   if (n === 2) { game.need = 8; setMission('knots'); }
   if (n === 3) { game.need = 14; game.bossHp = 14; setMission('boss'); spawnBoss(); }
   renderHud();
+  // bars slide away while playing so the score and hearts are visible
+  $('bars').classList.remove('on');
   game.phase = 'play';
 }
 function waveCleared() {
@@ -846,6 +849,7 @@ function defeatBoss() {
 async function finale() {
   game.phase = 'cut';
   $('mission').hidden = true;
+  $('bars').classList.add('on');
   // the storm clears into sunshine
   music.start('celebrate');
   setTint('sunny');
@@ -1194,7 +1198,7 @@ function frame(dt, time) {
   if (boss) {
     const b = boss.userData;
     b.t += dt;
-    boss.position.y += (1.4 - boss.position.y) * Math.min(1, dt * 1.2);
+    boss.position.y += (1.15 - boss.position.y) * Math.min(1, dt * 1.2);
     boss.position.x = Math.sin(b.t * 0.8) * 0.45;
     b.hitT = Math.max(0, b.hitT - dt);
     boss.scale.setScalar(b.size * (1 + b.hitT * 0.6));
