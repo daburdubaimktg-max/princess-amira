@@ -10,23 +10,28 @@ See [`docs/CHARACTER_BIBLE.md`](docs/CHARACTER_BIBLE.md) for who Amira is and th
 ## Amira Magic Scan (AR filter): `/scan/`
 **https://daburdubaimktg-max.github.io/princess-amira/scan/** works on iPhone and Android, with no app.
 Point the camera at the front of a pack, or at the printable [Amira card](scan/targets/amira_card.jpg).
-Amira bursts out in a shower of sparkles, lands beside the bottle and starts a mini-game:
+A small 3D island (sand, sea, palace, palms) grows beside the pack, Amira appears on it, and a
+three-wave game starts:
 
-| Scanned | Game |
+| Wave | What happens |
 |---|---|
-| Hair Oil | Tap the golden amla berries; they fly into her hair and make it shine |
-| Detangler | Pop the grumpy tangle knots |
-| Shampoo | Pop the magic bubbles |
-| Amira card | Pop the tangle knots |
+| 1 | Catch the pack's magic items as they swoop around in 3D: amla berries (Hair Oil), bubbles (Detangler, Shampoo) or stars (card). A rare golden star is worth 50. |
+| 2 | Grumpy tangle knots fly at Amira's hair. Pop them before they reach her, or she loses a heart ❤️. |
+| 3 | Boss: the Tangle Cloud. Tap it to shrink it; it spits knots back. At zero, Amira casts her magic and it bursts. |
 
-- Pop 8 to win: confetti, a twirl, a win card and that pack's line (quoted from the pack).
-- **Tap Amira** to tickle her (giggles, hops, twirls, hearts).
-- **💃 Dance** plays a song while she dances.
-- **📸 Photo with Amira** snaps a framed picture you can save or share.
-- The three packs share the same artwork, so the tracker finds "a pack" and the filter then
-  reads the label colour (gold, pink or purple) to tell which one it is.
-- Image tracking is [MindAR](https://github.com/hiukim/mind-ar-js), in the browser. Targets live
-  in `scan/targets/targets.mind`; rebuild them with `tools/compile_targets.html`.
+There are combos (up to x5), floating scores, a star rating from the hearts left, and the pack's line on
+the win card. Tap Amira to tickle her, **💃 Dance**, and **📸 Photo with Amira**.
+
+**How Amira is made:** she's the series' own cartoon render, not a 3D model (automatic 3D
+conversion of a cartoon face looks uncanny). Four short clips (wave, dance, cheer, magic) were
+generated from that render on a green screen (`assets/amira/*.mp4`). The filter keys out the green
+live and stands her in the 3D scene, always facing the camera. Every clip starts and ends on her
+still pose (`assets/amira/still.jpg`), so they chain seamlessly.
+
+- The three packs share the same artwork, so the tracker finds "a pack" and the filter then reads
+  the label colour (gold, pink or purple) to tell which one it is.
+- Image tracking is [MindAR](https://github.com/hiukim/mind-ar-js), in the browser. Targets are in
+  `scan/targets/targets.mind`; rebuild them with `tools/compile_targets.html`.
 
 ## What's in the world
 | Asset | How it was made |
