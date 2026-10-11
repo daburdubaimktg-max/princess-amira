@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Amira Magic Scan</title>
-  <meta name="description" content="Scan a Dabur Amla Kids pack or the Amira card: Princess Amira's magic island appears and the game begins." />
+  <meta name="description" content="Scan a Dabur Amla Kids pack and step into Princess Amira's magic world: a cinematic AR adventure." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./scan.css" />
@@ -21,6 +21,7 @@
 <body>
   <div id="ar"></div>
   <div id="flash"></div>
+  <div id="bars" aria-hidden="true"><i></i><i></i></div>
 
   <section id="intro">
     <div class="card">
@@ -34,9 +35,20 @@
         <img src="./targets/amira_card.jpg" alt="" />
       </div>
       <button id="btn-start" class="primary" data-i18n="start"></button>
+      <p class="tip" data-i18n="tip"></p>
       <p id="status" class="status" aria-live="polite"></p>
       <button id="btn-lang" class="link" data-i18n="lang"></button>
     </div>
+  </section>
+
+  <section id="title-card" hidden>
+    <div class="presents" data-i18n="presents"></div>
+    <h2 class="story" data-i18n="story"></h2>
+    <div class="flourish">✦ ✦ ✦</div>
+  </section>
+  <section id="chapter" hidden>
+    <div class="chap-num" id="chap-num"></div>
+    <div class="chap-name" id="chap-name"></div>
   </section>
 
   <section id="hud" hidden>
