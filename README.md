@@ -10,14 +10,25 @@ See [`docs/CHARACTER_BIBLE.md`](docs/CHARACTER_BIBLE.md) for who Amira is and th
 ## Amira Magic Scan (AR filter): `/scan/`
 **https://daburdubaimktg-max.github.io/princess-amira/scan/** works on iPhone and Android, with no app.
 Point the camera at the front of a pack, or at the printable [Amira card](scan/targets/amira_card.jpg).
-A small 3D island (sand, sea, palace, palms) grows beside the pack, Amira appears on it, and a
-three-wave game starts:
+It plays out as a short animated story, in Arabic or English:
 
-| Wave | What happens |
-|---|---|
-| 1 | Catch the pack's magic items as they swoop around in 3D: amla berries (Hair Oil), bubbles (Detangler, Shampoo) or stars (card). A rare golden star is worth 50. |
-| 2 | Grumpy tangle knots fly at Amira's hair. Pop them before they reach her, or she loses a heart ❤️. |
-| 3 | Boss: the Tangle Cloud. Tap it to shrink it; it spits knots back. At zero, Amira casts her magic and it bursts. |
+1. **Opening.** Letterbox bars slide in, music swells, and a golden portal opens in the room.
+   A title card reads *Dabur Amla Kids presents: Amira and the Tangle Storm*.
+2. **The kingdom rises.** A floating island with a palace, palms and a waterfall rises through the
+   portal, centred in front of you. Light rays fall and Amira arrives on a beam of light and
+   says hello in her own voice.
+3. **Chapter 1, Golden Magic:** catch the pack's magic items as they swoop around in 3D: amla berries
+   (Hair Oil), bubbles (Detangler, Shampoo) or stars (card). A rare golden star is worth 50.
+4. **Chapter 2, The Tangle Storm:** the sky darkens, rain and lightning roll in, and grumpy tangle knots
+   fly at Amira's hair. Pop them before they reach her, or she loses a heart ❤️.
+5. **Chapter 3, The Tangle Cloud:** a boss. Tap it to shrink it; it spits knots back. At zero,
+   Amira casts her magic and it bursts.
+6. **Finale, The Royal Celebration:** the sun breaks through, a rainbow arcs over the island, fireworks go off, Amira
+   dances, and the pack rises on a glowing pedestal under a spotlight.
+
+The world is pinned in the room with the phone's gyroscope once the pack is found, so you can look
+around it. The score is synthesized live in the browser (`scan/music.js`). Amira's voice lines are in
+`assets/voice/`.
 
 There are combos (up to x5), floating scores, a star rating from the hearts left, and the pack's line on
 the win card. Tap Amira to tickle her, **💃 Dance**, and **📸 Photo with Amira**.

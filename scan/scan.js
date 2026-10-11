@@ -1,86 +1,111 @@
-// Amira Magic Scan — point the camera at a Dabur Amla Kids pack (or the Amira card):
-// a little 3D island grows beside it, Princess Amira steps onto it, and a
-// three-wave game begins:
-//   Wave 1  catch the pack's magic items (berries / bubbles / stars) flying around
-//   Wave 2  tangle knots attack her hair — pop them before they reach her (3 hearts)
-//   Wave 3  boss: the Tangle Cloud — tap it to shrink it, then Amira finishes it
-// Amira herself is the series' own cartoon render, animated with generated clips
-// that are chroma-keyed live, so she looks exactly like the cartoon. Everything
-// around her (island, palace, palms, game pieces, boss) is real 3D.
+// Amira Magic Scan — a cinematic AR adventure.
+//
+// The pack is the key: scanning a Dabur Amla Kids pack (or the Amira card) awakens
+// it, magic streams to the middle of the screen, a portal opens and Amira's whole
+// world rises into the room in front of the child, big and centred, and stays put
+// as the phone moves (gyroscope). Then the story plays out in chapters:
+//   1  Golden Magic      catch the magic flying around Amira
+//   2  The Tangle Storm  sky darkens, thunder, knots attack her hair (3 hearts)
+//   3  The Tangle Cloud  boss fills the sky; tap it down, Amira finishes it
+//   ★  Royal Celebration storm clears, rainbow, fireworks, the three packs rise
+// Amira is the series' cartoon render, animated with green-screen clips that are
+// keyed live, and she speaks (generated voice lines, Arabic and English).
 import * as THREE from 'three';
 import { MindARThree } from 'mindar-image-three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { Sparkles, heartTexture, play, sound, unlockAudio } from '../src/effects.js';
+import { Sparkles, heartTexture, play, sound } from '../src/effects.js';
 import { STRINGS } from '../src/i18n.js';
+import { loadProducts } from '../src/products.js';
+import { music } from './music.js';
 
 // ---------- copy ----------
 const UI = {
   ar: {
     eyebrow: 'سحر دابر آملا كيدز',
-    title: 'امسحي… والعبي مع الأميرة أميرة!',
-    subtitle: 'وجّهي الكاميرا إلى عبوة آملا كيدز أو بطاقة أميرة، وستظهر جزيرة أميرة السحرية بجانبها ✨',
-    start: '📷 افتحي الكاميرا',
-    loading: 'جاري تحميل عالم أميرة…',
+    title: 'امسحي العبوة… وادخلي عالم أميرة!',
+    subtitle: 'وجّهي الكاميرا إلى عبوة آملا كيدز أو بطاقة أميرة، وشاهدي عالمها السحري يظهر أمامك ✨',
+    start: '✨ ابدئي المغامرة',
+    tip: '🔊 شغّلي الصوت للحصول على أفضل تجربة',
+    loading: 'جاري تحضير السحر…',
     camera: 'جاري تشغيل الكاميرا…',
     cameraError: 'لم نتمكن من فتح الكاميرا. اسمحي بالوصول إلى الكاميرا ثم حاولي مجدداً.',
     scanHint: 'وجّهي الكاميرا إلى عبوة آملا كيدز أو بطاقة أميرة',
     lang: 'English',
-    hello: 'مرحباً! أنا الأميرة أميرة 👑 ساعديني!',
-    waves: {
-      berries: 'الجولة ١: المسي حبّات الآملا الذهبية! ✨',
-      bubbles: 'الجولة ١: فرقعي فقاعات السحر! 🫧',
-      sparkles: 'الجولة ١: اجمعي النجوم السحرية! ⭐',
-      knots: 'الجولة ٢: عُقد التشابك تهاجم! فرقعيها قبل أن تصل لشعري! 💥',
-      boss: 'الجولة ٣: غيمة التشابك! المسيها بسرعة! 🌩️',
+    presents: 'دابر آملا كيدز تقدّم',
+    story: 'أميرة وعاصفة التشابك',
+    chapter: (n) => `الفصل ${['١', '٢', '٣'][n - 1]}`,
+    finaleTag: 'الخاتمة',
+    chapters: ['السحر الذهبي', 'عاصفة التشابك', 'غيمة التشابك', 'الاحتفال الملكي'],
+    missions: {
+      berries: 'المسي حبّات الآملا الذهبية! ✨',
+      bubbles: 'فرقعي فقاعات السحر! 🫧',
+      sparkles: 'اجمعي النجوم السحرية! ⭐',
+      knots: 'فرقعي العُقد قبل أن تصل لشعر أميرة! 💥',
+      boss: 'المسي الغيمة بسرعة! 🌩️',
     },
-    cleared: ['رائع! الجولة التالية! 🎉', 'أنتِ بطلة! ⭐'],
-    cheers: ['رائع! ✨', 'أحسنتِ! 💖', 'يا سلام! 🌟'],
-    ouch: 'آي! عقدة في شعري! 😣',
-    tickle: ['هههه! هذا يدغدغ! 😆', 'وييييي! 🌟', 'أنتِ صديقتي المفضلة! 💖'],
+    say: {
+      intro: 'مرحباً! أنا الأميرة أميرة! أهلاً بكِ في جزيرتي السحرية!',
+      ch1: 'ساعديني أجمع السحر الذهبي، ليصبح شعري قوياً ولامعاً!',
+      ch2: 'يا إلهي! عاصفة التشابك قادمة! فرقعي العُقد قبل أن تصل لشعري!',
+      ch3: 'إنها غيمة التشابك! المسيها بأسرع ما يمكن!',
+      win: 'لقد نجحنا! شعري قوي ولامع! هذا هو سحر دابر آملا كيدز!',
+      tickle: 'هههه، هذا يُدغدغ!',
+      ouch: 'آي! عقدة في شعري!',
+      photo: 'هيا نلتقط صورة معاً! ابتسمي!',
+    },
     combo: 'كومبو',
-    winTitle: 'هزمتِ غيمة التشابك! 🎉',
+    winTitle: 'أنقذتِ جزيرة أميرة! 🎉',
     cardWin: 'لا تشابك بعد اليوم! هذا هو سحر آملا كيدز ✨',
     score: 'النقاط',
     dance: '💃 رقصة',
     photo: '📸 صورة مع أميرة',
-    again: '🔄 العبي مجدداً',
+    again: '🔄 مغامرة جديدة',
     share: 'حفظ / مشاركة الصورة',
     back: 'رجوع',
-    afterWin: 'المسيني لأضحك، أو التقطي صورة معي! 📸',
   },
   en: {
     eyebrow: 'Dabur Amla Kids magic',
-    title: 'Scan it… and play with Princess Amira!',
-    subtitle: "Point your camera at an Amla Kids pack or the Amira card, and Amira's magic island appears beside it ✨",
-    start: '📷 Open camera',
-    loading: "Loading Amira's world…",
+    title: "Scan the pack… and step into Amira's world!",
+    subtitle: "Point your camera at an Amla Kids pack or the Amira card, and watch her magic world appear in front of you ✨",
+    start: '✨ Start the adventure',
+    tip: '🔊 Turn your sound on for the full experience',
+    loading: 'Preparing the magic…',
     camera: 'Starting camera…',
     cameraError: "We couldn't open the camera. Allow camera access, then try again.",
     scanHint: 'Point your camera at an Amla Kids pack or the Amira card',
     lang: 'العربية',
-    hello: "Hi! I'm Princess Amira 👑 Help me!",
-    waves: {
-      berries: 'Wave 1: tap the golden amla berries! ✨',
-      bubbles: 'Wave 1: pop the magic bubbles! 🫧',
-      sparkles: 'Wave 1: catch the magic stars! ⭐',
-      knots: 'Wave 2: tangle knots attack! Pop them before they reach my hair! 💥',
-      boss: 'Wave 3: the Tangle Cloud! Tap it fast! 🌩️',
+    presents: 'Dabur Amla Kids presents',
+    story: 'Amira and the Tangle Storm',
+    chapter: (n) => `Chapter ${n}`,
+    finaleTag: 'Finale',
+    chapters: ['Golden Magic', 'The Tangle Storm', 'The Tangle Cloud', 'The Royal Celebration'],
+    missions: {
+      berries: 'Tap the golden amla berries! ✨',
+      bubbles: 'Pop the magic bubbles! 🫧',
+      sparkles: 'Catch the magic stars! ⭐',
+      knots: "Pop the knots before they reach Amira's hair! 💥",
+      boss: 'Tap the cloud as fast as you can! 🌩️',
     },
-    cleared: ['Yay! Next wave! 🎉', "You're a star! ⭐"],
-    cheers: ['Yay! ✨', 'Great job! 💖', 'Wow! 🌟'],
-    ouch: 'Ouch! A knot in my hair! 😣',
-    tickle: ['Hehe! That tickles! 😆', 'Wheeee! 🌟', "You're my best friend! 💖"],
+    say: {
+      intro: "Hello! I'm Princess Amira! Welcome to my magic island!",
+      ch1: 'Help me catch the golden magic, so my hair grows strong and shiny!',
+      ch2: 'Oh no! The Tangle Storm is coming! Pop the knots before they reach my hair!',
+      ch3: "It's the Tangle Cloud! Tap it as fast as you can!",
+      win: "We did it! My hair is strong and shiny! That's Dabur Amla Kids magic!",
+      tickle: 'Hehe, that tickles!',
+      ouch: 'Ouch! A tangle in my hair!',
+      photo: "Let's take a photo together! Smile!",
+    },
     combo: 'COMBO',
-    winTitle: 'You beat the Tangle Cloud! 🎉',
+    winTitle: "You saved Amira's island! 🎉",
     cardWin: "No more tangles! That's Dabur Amla Kids magic ✨",
     score: 'Score',
     dance: '💃 Dance',
     photo: '📸 Photo with Amira',
-    again: '🔄 Play again',
+    again: '🔄 New adventure',
     share: 'Save / share photo',
     back: 'Back',
-    afterWin: 'Tap me to make me giggle, or take a photo with me! 📸',
   },
 };
 let lang = 'ar';
@@ -89,26 +114,40 @@ const T = () => UI[lang];
 const $ = (id) => document.getElementById(id);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const rand = (a, b) => a + Math.random() * (b - a);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const game = { target: -1, phase: 'idle', wave: 0, waveKey: null, need: 0, got: 0, hearts: 3, score: 0, combo: 0, lastHit: 0, bossHp: 0, spawnT: 0 };
 function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = T()[el.dataset.i18n]; });
-  if (game.waveKey) $('mission').textContent = T().waves[game.waveKey];
+  document.querySelectorAll('[data-i18n]').forEach((el) => { const v = T()[el.dataset.i18n]; if (typeof v === 'string') el.textContent = v; });
+  if (game.waveKey) $('mission').textContent = T().missions[game.waveKey];
 }
 applyLang();
+const buzz = (ms) => { try { navigator.vibrate?.(ms); } catch { /* not supported */ } };
+
+// ---------- Amira's voice ----------
 let bubbleTimer = 0;
-function say(text, ms = 3200) {
+function caption(text, ms = 3600) {
   const b = $('bubble');
   b.textContent = text;
   b.classList.add('show');
   clearTimeout(bubbleTimer);
   bubbleTimer = setTimeout(() => b.classList.remove('show'), ms);
 }
-const buzz = (ms) => { try { navigator.vibrate?.(ms); } catch { /* not supported */ } };
+const voiceUrl = (k) => new URL(`../assets/voice/${lang}_${k}.mp3`, import.meta.url).href;
+let voice = null;
+function speak(key, { interrupt = true } = {}) {
+  caption(T().say[key], 4500);
+  if (voice && !voice.paused && !interrupt) return;
+  if (voice) voice.pause();
+  voice = new Audio(voiceUrl(key));
+  voice.muted = sound.muted;
+  music.duck(true);
+  voice.onended = () => music.duck(false);
+  voice.play().catch(() => music.duck(false));
+}
 
 // ---------- targets (order matches targets.mind) ----------
-// height = target image height / width (MindAR makes the target 1 unit wide)
 const TARGETS = [
   { id: 'oil', height: 1024 / 495, color: 0xe0a33a, product: 0, theme: 'berries' },
   { id: 'detangler', height: 1024 / 441, color: 0xe8408f, product: 1, theme: 'bubbles' },
@@ -125,7 +164,6 @@ const gltf = new GLTFLoader(manager);
 const tex = new THREE.TextureLoader(manager);
 status.textContent = T().loading;
 
-// Amira's clips: each starts and ends on the same pose as the still, so they chain
 const CLIPS = ['wave', 'dance', 'cheer', 'magic'];
 const videos = Object.fromEntries(CLIPS.map((n) => {
   const v = document.createElement('video');
@@ -147,19 +185,22 @@ const mindar = new MindARThree({
   uiLoading: 'no',
   uiScanning: 'no',
   uiError: 'no',
-  filterMinCF: 0.0001, // steadier pose, a touch more lag
+  filterMinCF: 0.0001,
   filterBeta: 0.001,
-  missTolerance: 15, // keep the world up through brief tracking dropouts
 });
 const { renderer, scene, camera } = mindar;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-scene.add(new THREE.HemisphereLight(0xfff6ee, 0x806070, 1.2));
+const hemi = new THREE.HemisphereLight(0xfff6ee, 0x806070, 1.2);
+scene.add(hemi);
 const key = new THREE.DirectionalLight(0xffffff, 1.7);
 key.position.set(0.6, 1, 1);
 scene.add(key);
+// colour grade layer between the camera image and the 3D canvas
+const tint = document.createElement('div');
+tint.id = 'tint';
 
 function canvasTex(w, h, draw) {
   const c = document.createElement('canvas');
@@ -170,19 +211,23 @@ function canvasTex(w, h, draw) {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-const glowTex = canvasTex(128, 128, (g, s) => {
+const radial = (stops) => canvasTex(128, 128, (g, s) => {
   const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  grd.addColorStop(0, 'rgba(255,255,255,1)');
-  grd.addColorStop(0.3, 'rgba(255,255,255,0.45)');
-  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  stops.forEach(([k, c]) => grd.addColorStop(k, c));
   g.fillStyle = grd;
   g.fillRect(0, 0, s, s);
 });
+const glowTex = radial([[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.45)'], [1, 'rgba(255,255,255,0)']]);
 // over a camera feed the canvas is transparent: add light without writing alpha
 const GLOW = {
   blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
   blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor,
   blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor,
+};
+const glowSprite = (color, size, opacity = 0.8) => {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, ...GLOW, color, opacity }));
+  s.scale.setScalar(size);
+  return s;
 };
 
 function fit(obj, height) {
@@ -201,10 +246,16 @@ function fit(obj, height) {
   return holder;
 }
 
-// ---------- the world (stage units: Amira is 1 tall) ----------
-const stage = new THREE.Group(); // re-parented to whichever target is seen
-const world = new THREE.Group(); // island + props, grows in
-stage.add(world);
+// ---------- scene graph ----------
+// root: pinned to the room by the gyroscope (counter-rotates the phone's turns)
+// world: Amira's world, placed in front of the camera; units = Amira's height
+const root = new THREE.Group();
+scene.add(root);
+const world = new THREE.Group();
+world.visible = false;
+root.add(world);
+const land = new THREE.Group(); // island + props (rises in)
+world.add(land);
 
 const island = (() => {
   const g = new THREE.Group();
@@ -222,44 +273,46 @@ const island = (() => {
   const sand = tex.load(base('assets/tex/aerial_beach_01_diff.jpg'), (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2); });
   sand.colorSpace = THREE.SRGBColorSpace;
   g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: sand, color: 0xffe3b3, roughness: 1 })));
-  // turquoise shallows fading out, plus a foam line
-  const sea = new THREE.Mesh(new THREE.RingGeometry(0.56, 0.88, 96), new THREE.MeshBasicMaterial({
-    map: canvasTex(256, 16, (c, w, h) => {
-      const grd = c.createLinearGradient(0, 0, w, 0);
-      grd.addColorStop(0, 'rgba(90,220,225,0.95)');
-      grd.addColorStop(1, 'rgba(40,160,210,0)');
+  // the island floats: a rocky underside tapering to a point
+  const rock = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.55, 48, 4, true), new THREE.MeshStandardMaterial({ color: 0x9a7a5c, roughness: 1, side: THREE.DoubleSide }));
+  rock.rotation.x = Math.PI;
+  rock.position.y = -0.275;
+  const rp = rock.geometry.attributes.position;
+  for (let i = 0; i < rp.count; i++) rp.setX(i, rp.getX(i) * (1 + Math.sin(i * 1.7) * 0.06));
+  rock.geometry.computeVertexNormals();
+  g.add(rock);
+  // a waterfall of light spilling from the edge
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.6), new THREE.MeshBasicMaterial({
+    map: canvasTex(32, 128, (c, w, h) => {
+      const grd = c.createLinearGradient(0, 0, 0, h);
+      grd.addColorStop(0, 'rgba(160,240,255,0.9)');
+      grd.addColorStop(1, 'rgba(160,240,255,0)');
       c.fillStyle = grd;
       c.fillRect(0, 0, w, h);
-    }),
-    transparent: true, depthWrite: false,
+    }), transparent: true, depthWrite: false, ...GLOW,
   }));
-  const uv = sea.geometry.attributes.uv, sp = sea.geometry.attributes.position;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, (Math.hypot(sp.getX(i), sp.getY(i)) - 0.56) / 0.32, 0.5);
-  sea.rotation.x = -Math.PI / 2;
-  sea.position.y = -0.005;
-  g.add(sea);
-  const foam = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.009, 6, 96), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+  fall.position.set(-0.3, -0.3, 0.5);
+  g.add(fall);
+  const foam = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.012, 6, 96), new THREE.MeshBasicMaterial({ color: 0xbff4ff, transparent: true, opacity: 0.9 }));
   foam.rotation.x = Math.PI / 2;
   g.add(foam);
   g.userData.foam = foam;
   return g;
 })();
-world.add(island);
+land.add(island);
 
 const props = new THREE.Group();
-world.add(props);
+land.add(props);
 let cloudTemplate = null;
 Promise.all([
   gltf.loadAsync(base('assets/models/palace.glb')),
   gltf.loadAsync(base('assets/models/palm.glb')),
   gltf.loadAsync(base('assets/models/cloud.glb')),
 ]).then(([palace, palm, cloud]) => {
-  // everything stands behind or to the right of Amira, so nothing covers the pack
-  const p = fit(palace.scene, 0.62);
-  p.position.set(0.12, 0.02, -0.42);
-  p.rotation.y = -0.35;
+  const p = fit(palace.scene, 0.75);
+  p.position.set(0.05, 0.02, -0.4);
   props.add(p);
-  for (const [x, z, h, ry] of [[0.5, -0.08, 0.95, 2.2], [0.42, 0.36, 0.55, -0.9]]) {
+  for (const [x, z, h, ry] of [[0.48, -0.12, 0.95, 2.2], [-0.48, -0.15, 0.85, -0.9], [0.42, 0.33, 0.5, 1.2]]) {
     const m = fit(palm.scene.clone(true), h);
     m.position.set(x, 0.02, z);
     m.rotation.y = ry;
@@ -268,22 +321,77 @@ Promise.all([
   cloudTemplate = cloud.scene;
 });
 
+// god rays behind Amira
+const raysTex = canvasTex(256, 256, (g, s) => {
+  g.translate(s / 2, s / 2);
+  for (let i = 0; i < 12; i++) {
+    g.rotate(Math.PI / 6);
+    const grd = g.createLinearGradient(0, 0, s / 2, 0);
+    grd.addColorStop(0, 'rgba(255,240,200,0.55)');
+    grd.addColorStop(1, 'rgba(255,240,200,0)');
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(s / 2, -10);
+    g.lineTo(s / 2, 10);
+    g.fill();
+  }
+});
+const rays = new THREE.Sprite(new THREE.SpriteMaterial({ map: raysTex, transparent: true, depthWrite: false, ...GLOW, opacity: 0 }));
+rays.scale.setScalar(2.6);
+rays.position.set(0, 0.7, -0.6);
+world.add(rays);
+
+// portal: golden ring with a swirling heart and a pillar of light
+const portal = new THREE.Group();
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.035, 16, 96), new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0xffa520, emissiveIntensity: 1.2, metalness: 0.6, roughness: 0.3 }));
+portal.add(ring);
+const swirl = new THREE.Mesh(new THREE.CircleGeometry(0.6, 64), new THREE.MeshBasicMaterial({
+  map: canvasTex(256, 256, (g, s) => {
+    g.translate(s / 2, s / 2);
+    for (let i = 0; i < 360; i++) {
+      const a = i * 0.11, r = i * 0.34;
+      g.fillStyle = `hsla(${300 + (i % 60)}, 90%, ${70 + (i % 20)}%, ${0.9 - i / 420})`;
+      g.beginPath();
+      g.arc(Math.cos(a) * r, Math.sin(a) * r, 4 + i / 40, 0, Math.PI * 2);
+      g.fill();
+    }
+  }), transparent: true, depthWrite: false, ...GLOW,
+}));
+portal.add(swirl);
+portal.add(glowSprite(0xffc36b, 2.2, 0.9));
+portal.position.set(0, 0.55, 0);
+portal.visible = false;
+world.add(portal);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 3, 32, 1, true), new THREE.MeshBasicMaterial({
+  map: canvasTex(16, 128, (c, w, h) => {
+    const grd = c.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, 'rgba(255,240,190,0)');
+    grd.addColorStop(0.6, 'rgba(255,240,190,0.7)');
+    grd.addColorStop(1, 'rgba(255,255,255,1)');
+    c.fillStyle = grd;
+    c.fillRect(0, 0, w, h);
+  }), transparent: true, depthWrite: false, side: THREE.DoubleSide, ...GLOW,
+}));
+beam.position.y = 1.5;
+beam.visible = false;
+world.add(beam);
+
 // ---------- Amira: keyed cartoon billboard ----------
 const KEY_VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 const KEY_FRAG = `
-uniform sampler2D map; uniform float glow; uniform float flash; varying vec2 vUv;
+uniform sampler2D map; uniform float glow; uniform float flash; uniform float fade; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
   float g = c.g - max(c.r, c.b);
   float a = 1.0 - smoothstep(0.05, 0.16, g);   // green screen -> transparent
-  // the source render has a soft grey floor shadow under her feet: drop neutral greys
-  // there (her white gown is brighter, her shoes are pink, so both survive)
+  // the source render has a soft grey floor shadow under her feet: drop neutral greys there
   float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
   if (vUv.y < 0.14 && mx - mn < 0.09 && mx > 0.35 && mx < 0.8) a = 0.0;
   if (a < 0.03) discard;
   c.g = min(c.g, max(c.r, c.b) + 0.03);        // remove green spill on the edges
   vec3 col = c.rgb + glow * vec3(0.18, 0.14, 0.04) + flash * vec3(0.5, 0.2, 0.3);
-  gl_FragColor = vec4(col, a);
+  gl_FragColor = vec4(col, a * fade);
   #include <colorspace_fragment>
 }`;
 const stillTex = tex.load(base('assets/amira/still.jpg'));
@@ -294,62 +402,52 @@ const videoTex = Object.fromEntries(CLIPS.map((n) => {
   return [n, t];
 }));
 const amiraMat = new THREE.ShaderMaterial({
-  uniforms: { map: { value: stillTex }, glow: { value: 0 }, flash: { value: 0 } },
+  uniforms: { map: { value: stillTex }, glow: { value: 0 }, flash: { value: 0 }, fade: { value: 1 } },
   vertexShader: KEY_VERT, fragmentShader: KEY_FRAG, transparent: true, side: THREE.DoubleSide, toneMapped: false,
 });
-// the frame is 9:16; she fills 74% of its height and stands 6% above its bottom edge
-const FRAME_H = 1 / 0.74;
+const FRAME_H = 1 / 0.74; // the frame is 9:16; she fills 74% of its height, feet 6% above its bottom
 const amiraPlane = new THREE.Mesh(new THREE.PlaneGeometry(FRAME_H * 9 / 16, FRAME_H), amiraMat);
 amiraPlane.position.y = FRAME_H / 2 - 0.06 * FRAME_H;
-const amira = new THREE.Group(); // billboard pivot at her feet
+const amira = new THREE.Group();
 amira.add(amiraPlane);
-amira.position.set(-0.18, 0.03, 0.14);
-stage.add(amira);
-// tap area roughly her shape (the frame's corners are empty)
+amira.position.set(0, 0.03, 0.12);
+amira.visible = false;
+world.add(amira);
 const amiraHit = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.6, 4, 8), new THREE.MeshBasicMaterial({ visible: false }));
 amiraHit.position.y = 0.5;
 amira.add(amiraHit);
 const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshBasicMaterial({
-  map: canvasTex(128, 128, (g, s) => {
-    const grd = g.createRadialGradient(s / 2, s / 2, 2, s / 2, s / 2, s / 2);
-    grd.addColorStop(0, 'rgba(60,30,40,0.5)');
-    grd.addColorStop(1, 'rgba(60,30,40,0)');
-    g.fillStyle = grd;
-    g.fillRect(0, 0, s, s);
-  }),
-  transparent: true, depthWrite: false,
+  map: radial([[0, 'rgba(60,30,40,0.5)'], [1, 'rgba(60,30,40,0)']]), transparent: true, depthWrite: false,
 }));
 shadow.rotation.x = -Math.PI / 2;
 shadow.scale.set(1.2, 0.7, 1);
-shadow.position.set(-0.18, 0.065, 0.14);
-stage.add(shadow);
+shadow.position.set(0, 0.065, 0.12);
+shadow.visible = false;
+world.add(shadow);
+const HEAD = new THREE.Vector3(0, 0.82, 0.12);
 
-let clip = null; // currently playing clip name
+let clip = null;
 function playClip(name) {
   const v = videos[name];
   if (!v) return;
   if (clip && clip !== name) videos[clip].pause();
   clip = name;
   v.currentTime = 0;
-  // switch to the clip only once it really has frames, so a slow or unsupported
-  // video never shows up as a black box; she keeps her still pose meanwhile
+  // switch to the clip only once it really has frames (no black box on slow loads)
   v.onplaying = () => { if (clip === name) amiraMat.uniforms.map.value = videoTex[name]; };
   v.onended = () => { if (clip === name) { clip = null; amiraMat.uniforms.map.value = stillTex; } };
   v.onerror = v.onended;
   v.play().catch(() => { if (clip === name) clip = null; });
 }
-
-// procedural moves on top of the clips (hop, shake, breathing) for snappy reactions
 let move = null;
 function doMove(type, dur) { move = { type, t: 0, dur }; }
 const _cam = new THREE.Vector3();
 function updateAmira(dt, time) {
   // face the camera, turning only around her vertical axis so she stays upright
-  if (stage.parent) {
-    stage.updateWorldMatrix(true, false);
-    const camLocal = stage.worldToLocal(_cam.set(0, 0, 0));
-    amira.rotation.y = Math.atan2(camLocal.x - amira.position.x, camLocal.z - amira.position.z);
-  }
+  world.updateWorldMatrix(true, false);
+  const camLocal = world.worldToLocal(_cam.set(0, 0, 0));
+  amira.rotation.y = Math.atan2(camLocal.x - amira.position.x, camLocal.z - amira.position.z);
+  rays.material.rotation = time * 0.08;
   amira.position.y = 0.03;
   amiraPlane.scale.set(1, 1 + (clip ? 0 : Math.sin(time * 2.4) * 0.008), 1);
   amiraPlane.position.x = 0;
@@ -366,11 +464,11 @@ function updateAmira(dt, time) {
 }
 
 // ---------- particles, floating text ----------
-const sparkles = new Sparkles(1000);
-const hearts = new Sparkles(240, heartTexture());
+const sparkles = new Sparkles(1600);
+const hearts = new Sparkles(260, heartTexture());
 Object.assign(sparkles.points.material, GLOW);
 Object.assign(hearts.points.material, GLOW);
-stage.add(sparkles.points, hearts.points);
+world.add(sparkles.points, hearts.points);
 
 const floaters = [];
 function floatText(text, pos, color = '#ffd54f', size = 0.16) {
@@ -388,19 +486,113 @@ function floatText(text, pos, color = '#ffd54f', size = 0.16) {
   s.scale.set(size * 4, size, 1);
   s.position.copy(pos);
   s.renderOrder = 10;
-  stage.add(s);
+  world.add(s);
   floaters.push({ s, t: 0 });
 }
 
-// ---------- tweens ----------
+// ---------- weather: storm clouds, rain, lightning, rainbow, fireworks ----------
+const storm = new THREE.Group();
+world.add(storm);
+const rainN = 400;
+const rainGeo = new THREE.BufferGeometry();
+rainGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(rainN * 3), 3));
+const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0xc9a8ff, size: 0.02, transparent: true, opacity: 0.8, depthWrite: false, ...GLOW }));
+rain.visible = false;
+world.add(rain);
+const rp = rainGeo.attributes.position;
+for (let i = 0; i < rainN; i++) rp.setXYZ(i, rand(-1.4, 1.4), rand(0, 2.4), rand(-0.8, 0.8));
+
+let bolt = null;
+function lightning() {
+  if (bolt) world.remove(bolt);
+  const pts = [];
+  let p = new THREE.Vector3(rand(-0.9, 0.9), 2.1, rand(-0.5, 0.2));
+  for (let i = 0; i < 9; i++) { pts.push(p.clone()); p = p.add(new THREE.Vector3(rand(-0.15, 0.15), -0.24, rand(-0.05, 0.05))); }
+  bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xf0d8ff, transparent: true, ...GLOW }));
+  world.add(bolt);
+  setTimeout(() => { if (bolt) { world.remove(bolt); bolt = null; } }, 160);
+  $('flash').style.background = '#e8d8ff';
+  $('flash').classList.add('on');
+  requestAnimationFrame(() => requestAnimationFrame(() => $('flash').classList.remove('on')));
+  setTimeout(() => music.thunder(), 150);
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+  buzz(60);
+}
+
+const rainbow = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.09, 16, 96, Math.PI), new THREE.MeshBasicMaterial({
+  map: canvasTex(4, 64, (c, w, h) => {
+    ['#ff5a5a', '#ffa64d', '#ffe14d', '#6be36b', '#4dc3ff', '#7a6bff', '#c56bff'].forEach((col, i) => { c.fillStyle = col; c.fillRect(0, (i * h) / 7, w, h / 7 + 1); });
+  }), transparent: true, opacity: 0.0, depthWrite: false, side: THREE.DoubleSide,
+}));
+rainbow.position.set(0, 0.15, -0.75);
+rainbow.visible = false;
+world.add(rainbow);
+
+const rockets = [];
+function firework() {
+  const from = new THREE.Vector3(rand(-1, 1), 0.1, rand(-0.6, 0.2));
+  rockets.push({ p: from, v: new THREE.Vector3(rand(-0.1, 0.1), rand(1.6, 2.1), 0), t: 0, life: rand(0.8, 1.1), col: pick([0xffd54f, 0xff6fa5, 0x7fe7ff, 0xb388ff, 0x9cff8a]) });
+  music.whoosh();
+}
+
+// ---------- the products' moment ----------
+const pedestal = new THREE.Group();
+// beside Amira, a little in front, so it never hides her dress
+pedestal.position.set(0.42, 0, 0.3);
+pedestal.userData.s = 0.75;
+pedestal.visible = false;
+world.add(pedestal);
+const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.33, 0.06, 64), new THREE.MeshPhysicalMaterial({ color: 0xfff3e6, roughness: 0.3, clearcoat: 0.8 }));
+plinth.position.y = 0.03;
+pedestal.add(plinth);
+const trim = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.012, 8, 96), new THREE.MeshStandardMaterial({ color: 0xd9a23a, metalness: 0.9, roughness: 0.25 }));
+trim.rotation.x = Math.PI / 2;
+trim.position.y = 0.06;
+pedestal.add(trim);
+const spot = new THREE.Mesh(new THREE.ConeGeometry(0.36, 1.6, 32, 1, true), new THREE.MeshBasicMaterial({
+  map: canvasTex(8, 64, (c, w, h) => {
+    const grd = c.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, 'rgba(255,240,200,0)');
+    grd.addColorStop(1, 'rgba(255,240,200,0.14)');
+    c.fillStyle = grd;
+    c.fillRect(0, 0, w, h);
+  }), transparent: true, depthWrite: false, side: THREE.DoubleSide, ...GLOW,
+}));
+spot.position.y = 0.85;
+pedestal.add(spot);
+loadProducts(new URL('../assets/', import.meta.url), manager, 0.3).then((packs) => {
+  packs.forEach((p, i) => {
+    p.object.position.set((i - 1) * 0.17, 0.06, Math.abs(i - 1) * -0.05);
+    p.object.rotation.y = (1 - i) * 0.25;
+    pedestal.add(p.object);
+  });
+});
+
+// ---------- tweens & story helpers ----------
 const tweens = [];
 function tween(dur, fn, done) { tweens.push({ t: 0, dur, fn, done }); }
+const tweenP = (dur, fn) => new Promise((r) => tween(dur, fn, r));
+const ease = (k) => 1 - Math.pow(1 - k, 3);
 const back = (k) => 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2);
+function setTint(mode) { tint.className = mode || ''; }
+async function chapterCard(n) {
+  const c = $('chapter');
+  $('chap-num').textContent = n <= 3 ? T().chapter(n) : T().finaleTag;
+  $('chap-name').textContent = T().chapters[n - 1];
+  c.classList.remove('out');
+  c.hidden = false;
+  music.shimmer();
+  await wait(2000);
+  c.classList.add('out');
+  await wait(700);
+  c.hidden = true;
+}
 
 // ---------- game pieces ----------
 const items = new THREE.Group();
-stage.add(items);
-
+world.add(items);
 function makeBody(kind) {
   const g = new THREE.Group();
   if (kind === 'berries') {
@@ -425,7 +617,6 @@ function makeBody(kind) {
     hl.position.set(-0.033, 0.038, 0.058);
     g.add(hl);
   } else if (kind === 'sparkles' || kind === 'star') {
-    // a puffy 5-point star
     const sh = new THREE.Shape();
     for (let i = 0; i < 10; i++) {
       const r = i % 2 ? 0.035 : 0.085;
@@ -466,16 +657,12 @@ function makeItem(kind, behaviour) {
   const g = new THREE.Group();
   const body = makeBody(kind);
   g.add(body);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, ...GLOW, color: GLOW_COL[kind], opacity: kind === 'star' ? 1 : 0.7 }));
-  glow.scale.setScalar(kind === 'star' ? 0.42 : 0.3);
-  g.add(glow);
-  // generous invisible hit sphere so small fingers always connect
+  g.add(glowSprite(GLOW_COL[kind], kind === 'star' ? 0.42 : 0.3, kind === 'star' ? 1 : 0.7));
   const hit = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
   hit.userData.item = g;
   g.add(hit);
   g.userData = { kind, behaviour, body, alive: true, counts: true, t: 0, seed: Math.random() * 10, a: rand(0, Math.PI * 2), r: rand(0.45, 0.85), h: rand(0.25, 1.15), speed: rand(0.5, 0.9) * (Math.random() < 0.5 ? 1 : -1) };
   if (behaviour === 'attack') {
-    // start at the edge of the scene, then home in on her hair
     const a = rand(-1.3, 1.3) + (Math.random() < 0.5 ? 0 : Math.PI);
     g.position.set(Math.sin(a) * 1.1, rand(0.4, 1.3), Math.cos(a) * 0.9 + 0.3);
     g.userData.speed = rand(0.16, 0.24) + game.wave * 0.02;
@@ -484,55 +671,77 @@ function makeItem(kind, behaviour) {
   items.add(g);
   return g;
 }
-const HEAD = new THREE.Vector3(-0.18, 0.82, 0.14);
 
-// ---------- waves ----------
-function setMission(k) {
-  game.waveKey = k;
-  const m = $('mission');
-  m.hidden = false;
-  m.textContent = T().waves[k];
-  m.style.animation = 'none';
-  void m.offsetWidth; // restart the pop-in animation
-  m.style.animation = '';
-}
+// ---------- story ----------
 function renderHud() {
   $('score-num').textContent = game.score;
   $('hearts').textContent = '❤️'.repeat(game.hearts) + '🤍'.repeat(3 - game.hearts);
   $('wave-fill').style.width = `${Math.min(100, (game.got / Math.max(1, game.need)) * 100)}%`;
   $('wave-num').textContent = `${game.wave}/3`;
 }
+function setMission(k) {
+  game.waveKey = k;
+  const m = $('mission');
+  m.hidden = false;
+  m.textContent = T().missions[k];
+  m.style.animation = 'none';
+  void m.offsetWidth;
+  m.style.animation = '';
+}
 function clearItems() { for (const c of [...items.children]) items.remove(c); }
 
-function startGame() {
+async function chapter(n) {
+  game.phase = 'cut';
   clearItems();
-  if (boss) { stage.remove(boss); boss = null; }
-  Object.assign(game, { phase: 'play', wave: 0, score: 0, hearts: 3, combo: 0 });
-  $('hud-game').hidden = false;
-  $('btn-again').hidden = true;
-  nextWave();
-}
-function nextWave() {
-  game.wave++;
+  $('mission').hidden = true;
+  game.wave = n;
   game.got = 0;
   game.spawnT = 0;
-  if (game.wave === 1) { game.need = 10; setMission(TARGETS[game.target].theme); }
-  if (game.wave === 2) { game.need = 8; setMission('knots'); }
-  if (game.wave === 3) { game.need = 14; game.bossHp = 14; setMission('boss'); spawnBoss(); }
-  play('wave');
   renderHud();
+  $('bars').classList.add('on');
+  if (n === 2) {
+    // the sky turns: purple storm rolls in
+    music.start('storm');
+    setTint('storm');
+    rain.visible = true;
+    rays.material.opacity = 0;
+    if (cloudTemplate) {
+      for (let i = 0; i < 5; i++) {
+        const c = fit(cloudTemplate.clone(true), rand(0.25, 0.4));
+        c.position.set(rand(-1.2, 1.2), rand(1.6, 2.2), rand(-0.8, -0.2));
+        c.userData.drift = rand(0.1, 0.25) * (Math.random() < 0.5 ? -1 : 1);
+        c.scale.multiplyScalar(0.01);
+        storm.add(c);
+        tween(1.5, (k) => c.scale.setScalar(Math.max(0.01, ease(k))));
+      }
+    }
+    lightning();
+    setTimeout(lightning, 1400);
+  }
+  if (n === 3) {
+    music.start('boss');
+    lightning();
+  }
+  await chapterCard(n);
+  speak(['ch1', 'ch2', 'ch3'][n - 1]);
+  playClip(n === 1 ? 'wave' : 'magic');
+  if (n === 1) { game.need = 10; setMission(TARGETS[game.target].theme); }
+  if (n === 2) { game.need = 8; setMission('knots'); }
+  if (n === 3) { game.need = 14; game.bossHp = 14; setMission('boss'); spawnBoss(); }
+  renderHud();
+  // bars slide away while playing so the score and hearts are visible
+  $('bars').classList.remove('on');
+  game.phase = 'play';
 }
 function waveCleared() {
   if (game.phase !== 'play') return;
+  game.phase = 'cut';
   clearItems();
-  if (game.wave >= 3) return;
   play('combo');
   playClip('cheer');
   amiraMat.uniforms.glow.value = 1;
-  say(pick(T().cleared), 2000);
-  sparkles.burst(HEAD.clone(), [0xffd54f, 0xffffff, TARGETS[game.target].color], 120, { speed: 1.1, up: 0.4, life: 1.6 });
-  game.phase = 'between';
-  setTimeout(() => { if (game.phase === 'between') { game.phase = 'play'; nextWave(); } }, 2600);
+  sparkles.burst(HEAD.clone(), [0xffd54f, 0xffffff, TARGETS[game.target].color], 140, { speed: 1.1, up: 0.4, life: 1.6 });
+  setTimeout(() => chapter(game.wave + 1), 2200);
 }
 
 function addScore(points, pos) {
@@ -548,7 +757,6 @@ function addScore(points, pos) {
   }
   renderHud();
 }
-
 function hitItem(it) {
   const u = it.userData;
   if (!u.alive || game.phase !== 'play') return;
@@ -572,9 +780,7 @@ function hitItem(it) {
   if (u.kind !== 'star' && u.counts) game.got++;
   renderHud();
   if (game.wave < 3 && game.got >= game.need) setTimeout(waveCleared, 400);
-  else if (u.counts && game.got % 4 === 0) say(pick(T().cheers), 1200);
 }
-
 function knotReachedHair(it) {
   it.userData.alive = false;
   items.remove(it);
@@ -583,30 +789,27 @@ function knotReachedHair(it) {
   sparkles.burst(HEAD.clone(), [0x6b2fa8, 0xb06cff], 40, { speed: 0.6, life: 0.9 });
   amiraMat.uniforms.flash.value = 1;
   doMove('shake', 0.5);
-  say(T().ouch, 1500);
+  speak('ouch', { interrupt: false });
   game.hearts = Math.max(0, game.hearts - 1);
   game.combo = 0;
-  if (it.userData.counts) game.got++; // the wave still moves on, so nobody gets stuck
+  if (it.userData.counts) game.got++;
   renderHud();
   if (game.wave < 3 && game.got >= game.need) setTimeout(waveCleared, 400);
 }
 
-// boss
 let boss = null;
 function spawnBoss() {
   if (!cloudTemplate) return;
   boss = new THREE.Group();
-  const m = fit(cloudTemplate.clone(true), 0.5);
-  m.position.y -= 0.25;
+  const m = fit(cloudTemplate.clone(true), 0.6);
+  m.position.y -= 0.3;
   boss.add(m);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, ...GLOW, color: 0x9b4dff, opacity: 0.7 }));
-  glow.scale.setScalar(1.1);
-  boss.add(glow);
-  const hit = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), new THREE.MeshBasicMaterial({ visible: false }));
+  boss.add(glowSprite(0x9b4dff, 1.3, 0.7));
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(0.48, 12, 10), new THREE.MeshBasicMaterial({ visible: false }));
   boss.add(hit);
-  boss.position.set(0, 2.4, 0.1);
+  boss.position.set(0, 2.6, 0.1);
   boss.userData = { t: 0, shot: 0, size: 1, hitT: 0 };
-  stage.add(boss);
+  world.add(boss);
   play('cloud');
 }
 function hitBoss() {
@@ -620,58 +823,74 @@ function hitBoss() {
   const p = boss.position.clone();
   sparkles.burst(p, [0xb06cff, 0xffd54f, 0xffffff], 35, { speed: 1, up: 0.2, life: 0.9 });
   addScore(20, p);
+  if (game.bossHp % 5 === 0) lightning();
   renderHud();
   if (game.bossHp <= 0) defeatBoss();
 }
 function defeatBoss() {
-  game.phase = 'finale';
+  game.phase = 'cut';
   clearItems();
   playClip('magic');
   const b = boss;
-  // golden magic stream from Amira to the cloud, then it bursts
   tween(1.6, (k) => {
-    for (let n = 0; n < 6; n++) sparkles.emit(HEAD.clone().lerp(b.position, Math.random() * k), pick([0xffd54f, 0xff8fc8, 0xffffff]), { speed: 0.15, up: 0, life: 0.6 });
+    for (let n = 0; n < 8; n++) sparkles.emit(HEAD.clone().lerp(b.position, Math.random() * k), pick([0xffd54f, 0xff8fc8, 0xffffff]), { speed: 0.15, up: 0, life: 0.6 });
     b.rotation.z = Math.sin(k * 50) * 0.2;
   }, () => {
-    play('win');
+    music.boom();
     buzz(150);
-    sparkles.burst(b.position.clone(), [0xb06cff, 0xffd54f, 0xff8fc8, 0x7fe7ff, 0xffffff], 300, { speed: 1.8, up: 0.3, life: 2.2 });
-    stage.remove(b);
+    sparkles.burst(b.position.clone(), [0xb06cff, 0xffd54f, 0xff8fc8, 0x7fe7ff, 0xffffff], 400, { speed: 2, up: 0.3, life: 2.4 });
+    world.remove(b);
     boss = null;
     game.score += 200;
     floatText('+200', b.position.clone(), '#ffd54f', 0.24);
     renderHud();
-    setTimeout(win, 700);
+    setTimeout(finale, 900);
   });
 }
 
-function win() {
+async function finale() {
+  game.phase = 'cut';
+  $('mission').hidden = true;
+  $('bars').classList.add('on');
+  // the storm clears into sunshine
+  music.start('celebrate');
+  setTint('sunny');
+  rain.visible = false;
+  for (const c of [...storm.children]) tween(1.2, (k) => { c.position.y += 0.03; c.scale.multiplyScalar(0.96); }, () => storm.remove(c));
+  tween(2, (k) => { rays.material.opacity = ease(k) * 0.9; });
+  await chapterCard(4);
+  rainbow.visible = true;
+  rainbow.scale.setScalar(0.01);
+  tween(1.6, (k) => { rainbow.scale.setScalar(Math.max(0.01, ease(k))); rainbow.material.opacity = ease(k) * 0.75; });
+  playClip('dance');
+  speak('win');
+  game.fireworks = 10;
+  // the three packs rise on a spotlit pedestal
+  setTimeout(() => {
+    pedestal.visible = true;
+    music.rise();
+    tween(1.6, (k) => { pedestal.position.y = -0.6 * (1 - ease(k)); pedestal.scale.setScalar(Math.max(0.01, back(k)) * pedestal.userData.s); });
+  }, 2500);
+  setTimeout(showWin, 5200);
+}
+function showWin() {
   game.phase = 'won';
   const t = TARGETS[game.target];
-  $('mission').hidden = true;
-  playClip('cheer');
-  amiraMat.uniforms.glow.value = 1;
-  for (let n = 0; n < 5; n++) {
-    setTimeout(() => {
-      sparkles.burst(new THREE.Vector3(rand(-0.5, 0.5), 1.1, 0.1), [0xffd54f, 0xe8408f, 0x8a4fd8, 0x7fe7ff, 0xffffff, t.color], 140, { speed: 1.6, up: 0.6, life: 2.2 });
-      hearts.burst(new THREE.Vector3(0, 0.9, 0.2), [0xff6fa5, 0xff9ec4, 0xf0628f], 14, { speed: 0.7, up: 0.5, life: 1.8 });
-    }, n * 300);
-  }
   const stars = Math.max(1, game.hearts);
   $('win-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
   $('win-score').textContent = `${T().score}: ${game.score}`;
   $('win-line').textContent = t.product === null ? T().cardWin : STRINGS[lang].productLines[t.product];
   $('win').hidden = false;
+  $('hud-game').hidden = true;
+  $('bars').classList.remove('on');
   setTimeout(() => {
     $('win').hidden = true;
-    say(T().afterWin, 5000);
     $('btn-again').hidden = false;
-  }, 5000);
+    speak('photo');
+  }, 6000);
 }
 
 // ---------- which pack is it? ----------
-// The three packs share the same artwork, so the tracker can't reliably tell them
-// apart in greyscale. Read the label colour from the camera image instead.
 const PACK_HUES = [{ i: 0, hue: 28 }, { i: 1, hue: 335 }, { i: 2, hue: 275 }];
 const probe = document.createElement('canvas');
 probe.width = 160;
@@ -684,9 +903,8 @@ function identifyPack(anchor, fallback) {
   const cr = container.getBoundingClientRect();
   const vr = video.getBoundingClientRect();
   const h = TARGETS[fallback].height;
-  anchor.group.updateWorldMatrix(true, false); // the found callback fires before the next render
+  anchor.group.updateWorldMatrix(true, false);
   camera.updateMatrixWorld();
-  // circular mean of hue weighted by saturation over the pack-coloured areas
   let hx = 0, hy = 0, w = 0;
   const hsl = {};
   const col = new THREE.Color();
@@ -710,83 +928,127 @@ function identifyPack(anchor, fallback) {
   return PACK_HUES.reduce((best, p) => (dist(hue, p.hue) < dist(hue, best.hue) ? p : best)).i;
 }
 
-// ---------- placement ----------
-// MindAR makes the target 1 unit wide. The island goes BESIDE the target so the
-// label stays visible to the tracker, and Amira stands ~1.3x the bottle's height.
-function placeFor(found, anchor) {
-  const t = TARGETS[found];
-  if (t.id !== 'card') return { pos: new THREE.Vector3(1.75, -t.height / 2, 0.55), rot: new THREE.Euler(0, -0.25, 0), S: t.height * 0.95 };
-  anchor.group.updateMatrixWorld(true);
-  const n = new THREE.Vector3(0, 0, 1).transformDirection(anchor.group.matrixWorld);
-  const toCam = anchor.group.getWorldPosition(new THREE.Vector3()).negate().normalize();
-  // card on a screen, facing the camera: island stands out in front of its lower half
-  if (n.dot(toCam) > 0.82) return { pos: new THREE.Vector3(1.3, -t.height / 2, 0.5), rot: new THREE.Euler(0, -0.25, 0), S: 1.45 };
-  // card lying on a table: the island sits on the card's far half
-  return { pos: new THREE.Vector3(0, 0.2, 0), rot: new THREE.Euler(Math.PI / 2, 0, 0), S: 1.3 };
+// ---------- gyroscope: pin the world in the room ----------
+const gyro = { q: null, q0: null };
+const _euler = new THREE.Euler();
+const _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // camera looks out the back of the device
+const _z = new THREE.Vector3(0, 0, 1);
+function onOrient(e) {
+  if (e.alpha == null) return;
+  const d = THREE.MathUtils.DEG2RAD;
+  const orient = (screen.orientation?.angle ?? window.orientation ?? 0) * d;
+  _euler.set(e.beta * d, e.alpha * d, -e.gamma * d, 'YXZ');
+  const q = new THREE.Quaternion().setFromEuler(_euler).multiply(_q1).multiply(new THREE.Quaternion().setFromAxisAngle(_z, -orient));
+  gyro.q = q;
+}
+function pinWorld() { gyro.q0 = gyro.q ? gyro.q.clone() : null; }
+function updateGyro() {
+  if (!gyro.q || !gyro.q0) { root.quaternion.identity(); return; }
+  // objects fixed in the room appear rotated by the inverse of the phone's turn
+  root.quaternion.copy(gyro.q).invert().multiply(gyro.q0);
 }
 
-// ---------- tracking events ----------
-let ready = false;
-let lastLost = { i: -1, at: 0 };
-function onFound(found, anchor) {
+// ---------- the awakening: from the scanned pack to the world ----------
+let started = false;
+async function onFound(found, anchor) {
+  if (!ready || started) return;
+  started = true;
   $('scan-hint').hidden = true;
-  if (!ready) return;
-  $('actions').hidden = false;
   const i = TARGETS[found].id === 'card' ? found : identifyPack(anchor, found);
-  const { pos, rot, S } = placeFor(found, anchor);
-  anchor.group.add(stage);
-  stage.position.copy(pos);
-  stage.rotation.copy(rot);
-  stage.scale.setScalar(S);
-  if (lastLost.i === i && performance.now() - lastLost.at < 6000 && game.target === i) {
-    if (game.phase === 'play') $('mission').hidden = false;
-    return;
-  }
-  // the island grows out of the table, palace and palms pop up, then Amira appears
   game.target = i;
-  game.phase = 'intro';
-  clearItems();
-  if (boss) { stage.remove(boss); boss = null; }
-  $('hud-game').hidden = true;
-  $('mission').hidden = true;
+  const col = TARGETS[i].color;
+  // 1) the pack awakens: a burst of light on the label itself
+  anchor.group.updateWorldMatrix(true, false);
+  const packPos = new THREE.Vector3().setFromMatrixPosition(anchor.group.matrixWorld);
+  const halo = glowSprite(col, 2.5, 0);
+  anchor.group.add(halo);
+  music.unlock();
+  music.whoosh();
   play('place');
-  world.scale.setScalar(0.01);
-  amira.visible = false;
-  shadow.visible = false;
+  buzz(40);
+  tween(1.1, (k) => { halo.material.opacity = Math.sin(k * Math.PI) * 1.0; halo.scale.setScalar(1 + k * 3); }, () => anchor.group.remove(halo));
+  // 2) place the world in front of the camera, centred and big
+  const D = THREE.MathUtils.clamp(packPos.length() * 1.25, 1, 1e6);
+  const visH = 2 * D * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const visW = visH * camera.aspect;
+  const S = Math.min(0.46 * visH, 0.72 * visW);
+  pinWorld();
+  updateGyro();
+  world.position.set(0, -0.22 * visH, -D);
+  world.scale.setScalar(S);
+  world.visible = true;
+  land.visible = false;
+  // 3) magic streams from the pack to the middle of the screen
+  world.updateWorldMatrix(true, true);
+  const fromLocal = world.worldToLocal(packPos.clone());
+  await tweenP(1.2, (k) => {
+    for (let n = 0; n < 10; n++) {
+      const p = fromLocal.clone().lerp(new THREE.Vector3(0, 0.55, 0), Math.min(1, k + rand(-0.15, 0.05)));
+      sparkles.emit(p, pick([col, 0xffd54f, 0xffffff]), { speed: 0.12, up: 0.05, life: 0.8 });
+    }
+  });
+  mindar.controller?.stopProcessVideo?.(); // tracking's job is done; save the battery
+  // 4) the portal opens; cinematic bars; title card; music
+  $('bars').classList.add('on');
+  setTint('magic');
+  music.start('magic');
+  portal.visible = true;
+  portal.scale.setScalar(0.01);
+  music.shimmer();
+  tween(1.2, (k) => portal.scale.setScalar(Math.max(0.01, back(k))));
+  $('title-card').classList.remove('out');
+  $('title-card').hidden = false;
+  await wait(3200);
+  $('title-card').classList.add('out');
+  setTimeout(() => { $('title-card').hidden = true; }, 700);
+  // 5) the island rises through the portal
+  music.rise();
+  land.visible = true;
+  land.position.y = -1.2;
+  land.scale.setScalar(0.3);
   props.children.forEach((p) => p.scale.setScalar(0.01));
-  tween(0.8, (k) => world.scale.setScalar(Math.max(0.01, back(k))));
-  props.children.forEach((p, n) => setTimeout(() => {
-    play('tap');
-    tween(0.5, (k) => p.scale.setScalar(Math.max(0.01, back(k))));
-  }, 600 + n * 220));
-  setTimeout(() => {
-    amira.visible = true;
-    shadow.visible = true;
-    sparkles.burst(new THREE.Vector3(0, 0.5, 0.1), [TARGETS[i].color, 0xffd54f, 0xffffff], 160, { speed: 1.3, up: 0.4, life: 1.6 });
-    play('win');
-    doMove('hop', 0.5);
-    playClip('wave');
-    say(T().hello, 2600);
-    setTimeout(() => { if (game.phase === 'intro') startGame(); }, 2600);
-  }, 1500);
+  await tweenP(1.8, (k) => {
+    const e = ease(k);
+    land.position.y = -1.2 * (1 - e);
+    land.scale.setScalar(0.3 + 0.7 * e);
+    for (let n = 0; n < 4; n++) sparkles.emit(new THREE.Vector3(rand(-0.6, 0.6), land.position.y, rand(-0.4, 0.5)), pick([0xffd54f, 0xffffff, col]), { speed: 0.2, up: 0.4, life: 1.2 });
+  });
+  for (const [n, p] of props.children.entries()) {
+    setTimeout(() => { play('tap'); tween(0.6, (k) => p.scale.setScalar(Math.max(0.01, back(k)))); }, n * 220);
+  }
+  tween(1.0, (k) => { portal.scale.setScalar(Math.max(0.01, 1 - k)); }, () => { portal.visible = false; });
+  tween(2, (k) => { rays.material.opacity = ease(k) * 0.8; });
+  await wait(900);
+  // 6) Amira arrives in a pillar of light
+  beam.visible = true;
+  beam.material.opacity = 0;
+  await tweenP(0.6, (k) => { beam.material.opacity = k; });
+  music.shimmer();
+  amira.visible = true;
+  shadow.visible = true;
+  amiraMat.uniforms.fade.value = 0;
+  sparkles.burst(new THREE.Vector3(0, 0.5, 0.12), [col, 0xffd54f, 0xffffff], 260, { speed: 1.4, up: 0.4, life: 1.8 });
+  tween(0.8, (k) => { amiraMat.uniforms.fade.value = k; });
+  tween(1.4, (k) => { beam.material.opacity = 1 - k; }, () => { beam.visible = false; });
+  playClip('wave');
+  doMove('hop', 0.5);
+  speak('intro');
+  $('actions').hidden = false;
+  $('hud-game').hidden = false;
+  await wait(4200);
+  chapter(1);
 }
-function onLost() {
-  lastLost = { i: game.target, at: performance.now() };
-  $('scan-hint').hidden = false;
-  $('actions').hidden = true;
-  $('mission').hidden = true;
-}
+
 TARGETS.forEach((_, i) => {
   const a = mindar.addAnchor(i);
   a.onTargetFound = () => onFound(i, a);
-  a.onTargetLost = () => onLost(i);
 });
 
 // ---------- tapping ----------
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 container.addEventListener('pointerdown', (e) => {
-  if (!ready || !stage.parent || !stage.parent.visible) return;
+  if (!world.visible) return;
   const r = container.getBoundingClientRect();
   ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
@@ -794,28 +1056,27 @@ container.addEventListener('pointerdown', (e) => {
   if (hit) { hitItem(hit.object.userData.item); return; }
   if (boss && raycaster.intersectObject(boss, true).length) { hitBoss(); return; }
   if (amira.visible && raycaster.intersectObject(amiraHit).length) tickle();
+  else if (game.phase === 'won') { firework(); }
 });
-let tickleN = 0;
 function tickle() {
   play('giggle');
   doMove('hop', 0.5);
-  if (!clip) playClip(['wave', 'cheer', 'dance'][tickleN++ % 3]);
-  hearts.burst(new THREE.Vector3(0, 0.85, 0.2), [0xff6fa5, 0xff9ec4, 0xf0628f], 16, { speed: 0.5, up: 0.4, life: 1.5 });
-  say(pick(T().tickle), 2000);
+  if (!clip) playClip(pick(['wave', 'cheer', 'dance']));
+  hearts.burst(new THREE.Vector3(0, 0.85, 0.2), [0xff6fa5, 0xff9ec4, 0xf0628f], 18, { speed: 0.5, up: 0.4, life: 1.5 });
+  speak('tickle', { interrupt: false });
 }
 
 // ---------- buttons ----------
 $('btn-dance').onclick = () => {
-  if (!ready) return;
-  play('dance');
+  if (!world.visible) return;
   playClip('dance');
+  for (let n = 0; n < 4; n++) setTimeout(firework, n * 600);
   for (let n = 0; n < 10; n++) setTimeout(() => hearts.burst(new THREE.Vector3(rand(-0.4, 0.4), rand(0.4, 1.1), 0.2), [0xff6fa5, 0xff9ec4], 3, { speed: 0.3, up: 0.3, life: 1.4 }), n * 450);
 };
-$('btn-again').onclick = () => { if (game.target >= 0) startGame(); };
+$('btn-again').onclick = () => location.reload();
 
 let shotBlob = null;
 $('btn-photo').onclick = () => {
-  // freeze one frame: camera video (as displayed) + the 3D layer + a small brand tag
   const video = mindar.video;
   const cr = container.getBoundingClientRect();
   const W = renderer.domElement.width;
@@ -829,6 +1090,12 @@ $('btn-photo').onclick = () => {
     const vr = video.getBoundingClientRect();
     g.drawImage(video, (vr.left - cr.left) * sx, (vr.top - cr.top) * sx, vr.width * sx, vr.height * sx);
   }
+  // bake the colour grade into the photo too
+  const grd = g.createRadialGradient(W / 2, H * 0.45, W * 0.2, W / 2, H / 2, H * 0.75);
+  grd.addColorStop(0, 'rgba(255,220,160,0.08)');
+  grd.addColorStop(1, 'rgba(120,40,120,0.4)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, W, H);
   renderer.render(scene, camera);
   g.drawImage(renderer.domElement, 0, 0);
   const pad = 18 * sx;
@@ -842,6 +1109,7 @@ $('btn-photo').onclick = () => {
   g.fillStyle = '#c8456a';
   g.fillText(tag, pad + 14 * sx, H - pad - 16 * sx);
   play('place');
+  $('flash').style.background = '#fff';
   $('flash').classList.add('on');
   requestAnimationFrame(() => requestAnimationFrame(() => $('flash').classList.remove('on')));
   c.toBlob((b) => { shotBlob = b; $('shot-img').src = URL.createObjectURL(b); $('shot').hidden = false; }, 'image/jpeg', 0.92);
@@ -863,16 +1131,18 @@ $('btn-lang').onclick = () => {
   try { localStorage.setItem('amira-lang', lang); } catch { /* ignore */ }
   applyLang();
 };
-$('btn-sound').onclick = () => { sound.muted = !sound.muted; $('btn-sound').textContent = sound.muted ? '🔇' : '🔊'; };
-$('btn-close').onclick = () => {
-  mindar.stop();
-  renderer.setAnimationLoop(null);
-  $('hud').hidden = true;
-  $('intro').hidden = false;
-  $('btn-start').disabled = false;
+$('btn-sound').onclick = () => {
+  sound.muted = !sound.muted;
+  music.setMuted(sound.muted);
+  if (voice) voice.muted = sound.muted;
+  $('btn-sound').textContent = sound.muted ? '🔇' : '🔊';
 };
+$('btn-close').onclick = () => location.reload();
 
 // ---------- main loop ----------
+let ready = false;
+// tests run in a slow software renderer: let animations keep real time there
+const SLOW_OK = new URLSearchParams(location.search).has('debug');
 const _v = new THREE.Vector3();
 function frame(dt, time) {
   for (let k = tweens.length - 1; k >= 0; k--) {
@@ -882,17 +1152,19 @@ function frame(dt, time) {
     tw.fn(p);
     if (p >= 1) { tweens.splice(k, 1); tw.done?.(); }
   }
+  updateGyro();
+  if (!world.visible) { sparkles.update(dt); return; }
   updateAmira(dt, time);
   island.userData.foam.scale.setScalar(1 + Math.sin(time * 1.4) * 0.015);
+  land.position.y += Math.sin(time * 0.9) * 0.0006; // the island gently floats
+  portal.rotation.z = time * 0.6;
+  swirl.rotation.z = -time * 2;
 
   // spawning
   if (game.phase === 'play') {
     game.spawnT += dt;
     const alive = items.children.filter((c) => c.userData.alive);
-    if (game.wave === 1 && game.spawnT > 0.7 && alive.length < 4) {
-      game.spawnT = 0;
-      makeItem(Math.random() < 0.15 ? 'star' : TARGETS[game.target].theme, 'orbit');
-    }
+    if (game.wave === 1 && game.spawnT > 0.7 && alive.length < 4) { game.spawnT = 0; makeItem(Math.random() < 0.15 ? 'star' : TARGETS[game.target].theme, 'orbit'); }
     if (game.wave === 2 && game.spawnT > 1.3 && alive.length < 3) { game.spawnT = 0; makeItem('knot', 'attack'); }
     if (game.wave === 3 && boss) {
       boss.userData.shot += dt;
@@ -900,11 +1172,12 @@ function frame(dt, time) {
         boss.userData.shot = 0;
         const k = makeItem('knot', 'attack');
         k.position.copy(boss.position);
-        k.userData.counts = false; // boss knots hurt, but only boss hits finish the wave
+        k.userData.counts = false;
       }
     }
+    if (game.wave >= 2 && Math.random() < dt / 7) lightning();
   }
-  // movement
+  // pieces
   for (const it of items.children) {
     const u = it.userData;
     if (!u.alive) continue;
@@ -914,8 +1187,7 @@ function frame(dt, time) {
       u.a += u.speed * dt;
       let h = u.h + Math.sin(time * 2 + u.seed) * 0.08;
       if (u.kind === 'bubbles') { u.h += dt * 0.07; if (u.h > 1.3) u.h = 0.25; h = u.h; }
-      // sweeping figure-eight paths that swing toward the camera and back
-      it.position.set(HEAD.x + Math.cos(u.a) * u.r, h, Math.sin(u.a * 2) * 0.35 + 0.25 + Math.sin(u.a) * 0.25);
+      it.position.set(Math.cos(u.a) * u.r, h, Math.sin(u.a * 2) * 0.35 + 0.3 + Math.sin(u.a) * 0.25);
       u.body.rotation.y += dt * 1.5;
     } else {
       const to = HEAD.clone().sub(it.position);
@@ -926,44 +1198,74 @@ function frame(dt, time) {
       u.body.rotation.z = Math.sin(time * 7 + u.seed) * 0.3;
     }
   }
-  // boss drifting in
+  // boss
   if (boss) {
     const b = boss.userData;
     b.t += dt;
-    boss.position.y += (1.3 - boss.position.y) * Math.min(1, dt * 1.5);
+    boss.position.y += (1.15 - boss.position.y) * Math.min(1, dt * 1.2);
     boss.position.x = Math.sin(b.t * 0.8) * 0.45;
     b.hitT = Math.max(0, b.hitT - dt);
     boss.scale.setScalar(b.size * (1 + b.hitT * 0.6));
     boss.rotation.z = Math.sin(b.t * 2) * 0.08 + (b.hitT ? Math.sin(b.t * 60) * 0.15 : 0);
-    if (Math.random() < 0.3) sparkles.emit(boss.position.clone().add(_v.set(rand(-0.25, 0.25), -0.2, 0)), 0x9b4dff, { speed: 0.1, up: -0.25, life: 1 });
+    if (Math.random() < 0.4) sparkles.emit(boss.position.clone().add(_v.set(rand(-0.3, 0.3), -0.25, 0)), 0x9b4dff, { speed: 0.1, up: -0.25, life: 1 });
   }
-  // floating score text
+  // storm clouds drift, rain falls
+  for (const c of storm.children) { c.position.x += c.userData.drift * dt; if (Math.abs(c.position.x) > 1.5) c.userData.drift *= -1; }
+  if (rain.visible) {
+    for (let i = 0; i < rainN; i++) {
+      let y = rp.getY(i) - dt * rand(1.6, 2.2);
+      if (y < 0) y = 2.4;
+      rp.setY(i, y);
+    }
+    rp.needsUpdate = true;
+  }
+  // fireworks
+  if (game.fireworks > 0 && Math.random() < dt * 1.6) { game.fireworks--; firework(); }
+  for (let k = rockets.length - 1; k >= 0; k--) {
+    const r = rockets[k];
+    r.t += dt;
+    r.v.y -= dt * 1.2;
+    r.p.addScaledVector(r.v, dt);
+    sparkles.emit(r.p.clone(), 0xfff3c0, { speed: 0.03, up: -0.1, life: 0.4 });
+    if (r.t > r.life) {
+      rockets.splice(k, 1);
+      music.boom();
+      sparkles.burst(r.p.clone(), [r.col, r.col, 0xffffff], 150, { speed: 1.4, up: 0, life: 1.8 });
+    }
+  }
+  if (game.phase === 'won' || game.phase === 'cut') {
+    if (pedestal.visible) pedestal.children.forEach((c, n) => { if (n >= 3) c.rotation.y += dt * 0.4 * (n % 2 ? 1 : -1); });
+  }
+  // floating text
   for (let k = floaters.length - 1; k >= 0; k--) {
     const f = floaters[k];
     f.t += dt;
     f.s.position.y += dt * 0.35;
     f.s.material.opacity = Math.max(0, 1 - f.t / 0.9);
-    if (f.t > 0.9) { stage.remove(f.s); f.s.material.map.dispose(); floaters.splice(k, 1); }
+    if (f.t > 0.9) { world.remove(f.s); f.s.material.map.dispose(); floaters.splice(k, 1); }
   }
-  // ambient sparkle around her while on screen
-  if (stage.parent && amira.visible && Math.random() < 0.3) {
-    sparkles.emit(new THREE.Vector3(rand(-0.3, 0.3), rand(0.1, 1.1), 0.12), pick([0xffe082, 0xfff6d6]), { speed: 0.07, up: 0.12, life: 1.2 });
-  }
-  const s = stage.matrixWorld.getMaxScaleOnAxis();
-  sparkles.points.material.size = 0.05 * s;
+  // ambient magic: fireflies drifting through the scene
+  if (Math.random() < 0.6) sparkles.emit(new THREE.Vector3(rand(-1, 1), rand(0.1, 1.6), rand(-0.6, 0.6)), pick([0xffe082, 0xfff6d6, 0xffb3e6]), { speed: 0.05, up: 0.08, life: 2 });
+  const s = world.matrixWorld.getMaxScaleOnAxis();
+  sparkles.points.material.size = 0.045 * s;
   hearts.points.material.size = 0.09 * s;
   sparkles.update(dt);
   hearts.update(dt);
 }
 
 $('btn-start').onclick = async () => {
-  unlockAudio();
+  music.unlock();
   $('btn-start').disabled = true;
-  // iOS only lets videos play after a tap: unlock every clip now
-  for (const v of Object.values(videos)) v.play().then(() => v.pause()).catch(() => {});
+  for (const v of Object.values(videos)) v.play().then(() => v.pause()).catch(() => {}); // iOS: unlock clips in the tap
+  // iOS asks for motion access in the tap; without it the world simply stays camera-locked
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission();
+  } catch { /* declined: fine */ }
+  window.addEventListener('deviceorientation', onOrient);
   status.textContent = T().camera;
   try {
     await mindar.start();
+    container.insertBefore(tint, renderer.domElement);
     ready = true;
     $('intro').hidden = true;
     $('hud').hidden = false;
@@ -971,7 +1273,7 @@ $('btn-start').onclick = async () => {
     status.textContent = '';
     const clock = new THREE.Clock();
     renderer.setAnimationLoop(() => {
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const dt = Math.min(clock.getDelta(), SLOW_OK ? 0.3 : 0.1);
       frame(dt, clock.elapsedTime);
       renderer.render(scene, camera);
     });
@@ -984,5 +1286,5 @@ $('btn-start').onclick = async () => {
 
 // handy for automated tests: open with ?debug
 if (new URLSearchParams(location.search).has('debug')) {
-  window.amiraScan = { game, items, hitItem, hitBoss, tickle, camera, container, THREE, get boss() { return boss; } };
+  window.amiraScan = { game, items, hitItem, hitBoss, tickle, chapter, camera, container, THREE, get boss() { return boss; } };
 }
