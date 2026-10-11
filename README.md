@@ -7,6 +7,15 @@ A browser-based augmented-reality world for **Princess Amira** from the Dabur Am
 
 See [`docs/CHARACTER_BIBLE.md`](docs/CHARACTER_BIBLE.md) for who Amira is and the AR story.
 
+## Amira Magic Scan (AR filter) — `/scan/`
+**https://daburdubaimktg-max.github.io/princess-amira/scan/** works on iPhone and Android, with no app.
+Point the camera at the front of a **Hair Oil, Detangler or Shampoo** pack, or at the printable
+[Amira card](scan/targets/amira_card.jpg), and Amira bursts out in a shower of sparkles, lands
+beside the bottle (or steps out of the card), waves and says the product's line. Wave, Cheer
+and Magic buttons play her animations. Image tracking is [MindAR](https://github.com/hiukim/mind-ar-js)
+(in-browser). Targets are compiled in `scan/targets/targets.mind` (rebuild with
+`tools/compile_targets.html`).
+
 ## What's in the world
 | Asset | How it was made |
 |---|---|
