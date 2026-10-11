@@ -19,8 +19,25 @@ function starTexture() {
   return t;
 }
 
+export function heartTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.beginPath();
+  g.moveTo(32, 54);
+  g.bezierCurveTo(4, 36, 6, 10, 22, 10);
+  g.bezierCurveTo(28, 10, 32, 16, 32, 20);
+  g.bezierCurveTo(32, 16, 36, 10, 42, 10);
+  g.bezierCurveTo(58, 10, 60, 36, 32, 54);
+  g.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Sparkles {
-  constructor(max = 600) {
+  constructor(max = 600, texture = starTexture()) {
     this.max = max;
     this.pos = new Float32Array(max * 3);
     this.col = new Float32Array(max * 3);
@@ -32,7 +49,7 @@ export class Sparkles {
     geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('color', new THREE.BufferAttribute(this.col, 3).setUsage(THREE.DynamicDrawUsage));
     this.points = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 0.045, map: starTexture(), vertexColors: true, transparent: true,
+      size: 0.045, map: texture, vertexColors: true, transparent: true,
       depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
     }));
     this.points.frustumCulled = false;
@@ -110,6 +127,13 @@ const SEQ = {
   cloud: [[196, 0, 0.5, 'triangle', 0.12], [185, 0.15, 0.5, 'triangle', 0.12]],
   win: [[784, 0], [988, 0.12], [1175, 0.24], [1568, 0.36], [1318.5, 0.5], [1568, 0.62], [2093, 0.8, 0.8]],
   place: [[659.3, 0], [1318.5, 0.06, 0.6]],
+  pop: [[880, 0, 0.08, 'square', 0.06], [1760, 0.03, 0.12, 'sine', 0.12]],
+  berry: [[1046.5, 0, 0.15], [1568, 0.06, 0.25]],
+  giggle: [[1318.5, 0, 0.09, 'triangle', 0.12], [1568, 0.1, 0.09, 'triangle', 0.12], [1318.5, 0.2, 0.09, 'triangle', 0.12], [1760, 0.3, 0.14, 'triangle', 0.12]],
+  // a short, bouncy tune for the dance (C major, two bars, played twice)
+  dance: [523.3, 659.3, 784, 659.3, 880, 784, 659.3, 784, 523.3, 659.3, 784, 1046.5, 988, 880, 784, 1046.5]
+    .flatMap((f, i) => [[f, i * 0.19, 0.17, 'triangle', 0.11], [f, 3.04 + i * 0.19, 0.17, 'triangle', 0.11]])
+    .concat([0, 0.76, 1.52, 2.28, 3.04, 3.8, 4.56, 5.32].map((w) => [130.8, w, 0.25, 'sine', 0.18])),
 };
 
 export function play(name) {
