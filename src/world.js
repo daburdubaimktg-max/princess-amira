@@ -74,7 +74,7 @@ function prep(root, { cast = true, receive = true } = {}) {
 // Auto-rigged ball gowns tear when the legs move, so leg/hip tracks can be dropped
 // and the body animates from the waist up.
 const LEG_BONES = /(UpLeg|Leg|Foot|Toe|Hips)$/;
-function character(gltf, extraClips, height, { lockLegs = false, idleWeight = 0.5 } = {}) {
+export function character(gltf, extraClips, height, { lockLegs = false, idleWeight = 0.5 } = {}) {
   const model = prep(gltf.scene);
   const holder = fit(model, height);
   const mixer = new THREE.AnimationMixer(model);

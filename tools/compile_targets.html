@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Rebuilds scan/targets/targets.mind from the target images.
+     Serve the repo root (python3 -m http.server), open /tools/compile_targets.html,
+     click Compile, then save the downloaded file over scan/targets/targets.mind.
+     Order matters: it must match TARGETS in scan/scan.js. -->
+<meta charset="utf-8" />
+<title>Compile scan targets</title>
+<button id="go">Compile</button> <span id="p"></span>
+<script type="module">
+import { Compiler } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js';
+const NAMES = ['oil', 'detangler', 'shampoo', 'amira_card'];
+document.getElementById('go').onclick = async () => {
+  const imgs = await Promise.all(NAMES.map((n) => new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `../scan/targets/${n}.jpg`;
+  })));
+  const c = new Compiler();
+  await c.compileImageTargets(imgs, (p) => { document.getElementById('p').textContent = `${p.toFixed(0)}%`; });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([c.exportData()]));
+  a.download = 'targets.mind';
+  a.click();
+};
+</script>
