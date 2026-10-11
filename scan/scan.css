@@ -94,15 +94,15 @@ h1 { font-family: var(--display); color: var(--rose); margin: 4px 0 6px; font-si
 .pill.big { color: #fff; border: 0; background: linear-gradient(180deg, var(--rose-2), var(--rose)); padding: 13px 22px; font-size: 17px; box-shadow: 0 6px 18px rgba(200, 69, 106, 0.45); }
 
 /* ---------- win ---------- */
-#win { position: fixed; inset: 0; z-index: 8; display: grid; place-items: start center; pointer-events: none; padding: calc(120px + env(safe-area-inset-top, 0px)) 16px 16px; }
+#win { position: fixed; inset: 0; z-index: 8; display: grid; place-items: start center; pointer-events: none; padding: calc(56px + env(safe-area-inset-top, 0px)) 16px 16px; }
 .win-card {
-  background: var(--glass); border: 2px solid var(--gold); border-radius: 26px; padding: 18px 22px; text-align: center;
-  max-width: 340px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); animation: pop-in 0.6s cubic-bezier(.3, 1.7, .5, 1);
+  background: var(--glass); border: 2px solid var(--gold); border-radius: 26px; padding: 10px 18px 12px; text-align: center;
+  max-width: 320px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); animation: pop-in 0.6s cubic-bezier(.3, 1.7, .5, 1);
 }
-.badge { font-size: 52px; line-height: 1; animation: wobble 1.2s ease-in-out infinite; }
-.win-card h2 { font-family: var(--display); color: var(--rose); margin: 6px 0 4px; font-size: 26px; }
-.win-card p { margin: 0; font-size: 15px; line-height: 1.45; }
-.stars { font-size: 30px; letter-spacing: 4px; margin: 2px 0; }
+.badge { font-size: 34px; line-height: 1; animation: wobble 1.2s ease-in-out infinite; }
+.win-card h2 { font-family: var(--display); color: var(--rose); margin: 2px 0; font-size: 22px; }
+.win-card p { margin: 0; font-size: 13px; line-height: 1.4; }
+.stars { font-size: 24px; letter-spacing: 4px; margin: 2px 0; }
 .win-score { font-family: var(--display); font-weight: 700; color: var(--plum); font-size: 18px; margin-bottom: 6px; }
 
 /* ---------- photo ---------- */

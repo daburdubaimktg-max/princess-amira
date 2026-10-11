@@ -524,7 +524,7 @@ function lightning() {
 const rainbow = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.09, 16, 96, Math.PI), new THREE.MeshBasicMaterial({
   map: canvasTex(4, 64, (c, w, h) => {
     ['#ff5a5a', '#ffa64d', '#ffe14d', '#6be36b', '#4dc3ff', '#7a6bff', '#c56bff'].forEach((col, i) => { c.fillStyle = col; c.fillRect(0, (i * h) / 7, w, h / 7 + 1); });
-  }), transparent: true, opacity: 0.0, depthWrite: false, side: THREE.DoubleSide, ...GLOW,
+  }), transparent: true, opacity: 0.0, depthWrite: false, side: THREE.DoubleSide,
 }));
 rainbow.position.set(0, 0.15, -0.75);
 rainbow.visible = false;
@@ -539,30 +539,32 @@ function firework() {
 
 // ---------- the products' moment ----------
 const pedestal = new THREE.Group();
-pedestal.position.set(0, 0, 0.5);
+// beside Amira, a little in front, so it never hides her dress
+pedestal.position.set(0.42, 0, 0.3);
+pedestal.userData.s = 0.75;
 pedestal.visible = false;
 world.add(pedestal);
-const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.45, 0.06, 64), new THREE.MeshPhysicalMaterial({ color: 0xfff3e6, roughness: 0.3, clearcoat: 0.8 }));
+const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.33, 0.06, 64), new THREE.MeshPhysicalMaterial({ color: 0xfff3e6, roughness: 0.3, clearcoat: 0.8 }));
 plinth.position.y = 0.03;
 pedestal.add(plinth);
-const trim = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.012, 8, 96), new THREE.MeshStandardMaterial({ color: 0xd9a23a, metalness: 0.9, roughness: 0.25 }));
+const trim = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.012, 8, 96), new THREE.MeshStandardMaterial({ color: 0xd9a23a, metalness: 0.9, roughness: 0.25 }));
 trim.rotation.x = Math.PI / 2;
 trim.position.y = 0.06;
 pedestal.add(trim);
-const spot = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.6, 32, 1, true), new THREE.MeshBasicMaterial({
+const spot = new THREE.Mesh(new THREE.ConeGeometry(0.36, 1.6, 32, 1, true), new THREE.MeshBasicMaterial({
   map: canvasTex(8, 64, (c, w, h) => {
     const grd = c.createLinearGradient(0, 0, 0, h);
     grd.addColorStop(0, 'rgba(255,240,200,0)');
-    grd.addColorStop(1, 'rgba(255,240,200,0.45)');
+    grd.addColorStop(1, 'rgba(255,240,200,0.14)');
     c.fillStyle = grd;
     c.fillRect(0, 0, w, h);
   }), transparent: true, depthWrite: false, side: THREE.DoubleSide, ...GLOW,
 }));
 spot.position.y = 0.85;
 pedestal.add(spot);
-loadProducts(new URL('../assets/', import.meta.url), manager, 0.36).then((packs) => {
+loadProducts(new URL('../assets/', import.meta.url), manager, 0.3).then((packs) => {
   packs.forEach((p, i) => {
-    p.object.position.set((i - 1) * 0.24, 0.06, Math.abs(i - 1) * -0.05);
+    p.object.position.set((i - 1) * 0.17, 0.06, Math.abs(i - 1) * -0.05);
     p.object.rotation.y = (1 - i) * 0.25;
     pedestal.add(p.object);
   });
@@ -867,7 +869,7 @@ async function finale() {
   setTimeout(() => {
     pedestal.visible = true;
     music.rise();
-    tween(1.6, (k) => { pedestal.position.y = -0.6 * (1 - ease(k)); pedestal.scale.setScalar(Math.max(0.01, back(k))); });
+    tween(1.6, (k) => { pedestal.position.y = -0.6 * (1 - ease(k)); pedestal.scale.setScalar(Math.max(0.01, back(k)) * pedestal.userData.s); });
   }, 2500);
   setTimeout(showWin, 5200);
 }
@@ -1139,6 +1141,8 @@ $('btn-close').onclick = () => location.reload();
 
 // ---------- main loop ----------
 let ready = false;
+// tests run in a slow software renderer: let animations keep real time there
+const SLOW_OK = new URLSearchParams(location.search).has('debug');
 const _v = new THREE.Vector3();
 function frame(dt, time) {
   for (let k = tweens.length - 1; k >= 0; k--) {
@@ -1269,7 +1273,7 @@ $('btn-start').onclick = async () => {
     status.textContent = '';
     const clock = new THREE.Clock();
     renderer.setAnimationLoop(() => {
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const dt = Math.min(clock.getDelta(), SLOW_OK ? 0.3 : 0.1);
       frame(dt, clock.elapsedTime);
       renderer.render(scene, camera);
     });
@@ -1282,5 +1286,5 @@ $('btn-start').onclick = async () => {
 
 // handy for automated tests: open with ?debug
 if (new URLSearchParams(location.search).has('debug')) {
-  window.amiraScan = { game, items, hitItem, hitBoss, tickle, camera, container, THREE, get boss() { return boss; } };
+  window.amiraScan = { game, items, hitItem, hitBoss, tickle, chapter, camera, container, THREE, get boss() { return boss; } };
 }
