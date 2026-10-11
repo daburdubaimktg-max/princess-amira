@@ -29,7 +29,13 @@ All models are compressed for phones (quantized geometry, WebP textures): about 
 ```bash
 python3 -m http.server 8080   # open http://localhost:8080
 ```
-WebXR AR needs **HTTPS**: deploy to GitHub Pages, Netlify or Vercel, then open the link in **Chrome on an ARCore Android phone**. Add `?debug` to expose `window.amiraDebug` for automated screenshots.
+WebXR AR needs **HTTPS**. The repo deploys itself to GitHub Pages (`.github/workflows/pages.yml`) on every push to `main`:
+
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions** (one time).
+2. Merge to `main` (or run the workflow from the Actions tab).
+3. Open **https://daburdubaimktg-max.github.io/princess-amira/** in **Chrome on an ARCore Android phone** and tap *Start AR*.
+
+Pages on a private repo needs a paid GitHub plan, and the published site is public (anyone with the URL can open it). Add `?debug` to expose `window.amiraDebug` for automated screenshots.
 
 ## Asset pipeline (`tools/`)
 | Script | Purpose |
