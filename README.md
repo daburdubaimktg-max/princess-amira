@@ -7,19 +7,31 @@ A browser-based augmented-reality world for **Princess Amira** from the Dabur Am
 
 See [`docs/CHARACTER_BIBLE.md`](docs/CHARACTER_BIBLE.md) for who Amira is and the AR story.
 
-## Amira Magic Scan (AR filter) — `/scan/`
+## Amira Magic Scan (AR filter): `/scan/`
 **https://daburdubaimktg-max.github.io/princess-amira/scan/** works on iPhone and Android, with no app.
-Point the camera at the front of a **Hair Oil, Detangler or Shampoo** pack, or at the printable
-[Amira card](scan/targets/amira_card.jpg), and Amira bursts out in a shower of sparkles, lands
-beside the bottle (or steps out of the card), waves and says the product's line. Wave, Cheer
-and Magic buttons play her animations. Image tracking is [MindAR](https://github.com/hiukim/mind-ar-js)
-(in-browser). Targets are compiled in `scan/targets/targets.mind` (rebuild with
-`tools/compile_targets.html`).
+Point the camera at the front of a pack, or at the printable [Amira card](scan/targets/amira_card.jpg).
+Amira bursts out in a shower of sparkles, lands beside the bottle and starts a mini-game:
+
+| Scanned | Game |
+|---|---|
+| Hair Oil | Tap the golden amla berries; they fly into her hair and make it shine |
+| Detangler | Pop the grumpy tangle knots |
+| Shampoo | Pop the magic bubbles |
+| Amira card | Pop the tangle knots |
+
+- Pop 8 to win: confetti, a twirl, a win card and that pack's line (quoted from the pack).
+- **Tap Amira** to tickle her (giggles, hops, twirls, hearts).
+- **💃 Dance** plays a song while she dances.
+- **📸 Photo with Amira** snaps a framed picture you can save or share.
+- The three packs share the same artwork, so the tracker finds "a pack" and the filter then
+  reads the label colour (gold, pink or purple) to tell which one it is.
+- Image tracking is [MindAR](https://github.com/hiukim/mind-ar-js), in the browser. Targets live
+  in `scan/targets/targets.mind`; rebuild them with `tools/compile_targets.html`.
 
 ## What's in the world
 | Asset | How it was made |
 |---|---|
-| **Amira** (rigged, animated: idle, wave, cheer, spell-cast) | Frames from the series → clean turnaround ([`docs/reference/amira_turnaround.jpg`](docs/reference/amira_turnaround.jpg)) → Meshy 7 image-to-3D (textured, PBR, auto-rig). Her leg bones are locked so the ball gown never tears. |
+| **Amira** (rigged, animated: idle, wave, cheer, spell-cast) | Frames from the series → clean turnaround ([`docs/reference/amira_turnaround.jpg`](docs/reference/amira_turnaround.jpg)) → Meshy 7 image-to-3D (textured, PBR, auto-rig). Only her arm bones are animated; hops, twirls and dancing move her whole body, so her neck and gown never distort. |
 | **Two friends** (blue headband, ponytail) | Same pipeline from the beach-episode frame |
 | **Palace, palm trees, Tangle Cloud** | Meshy text-to-3D, PBR |
 | **Hair Oil, Detangler, Shampoo** | Built from the **official packshots**: the silhouette is traced into a 3D lathe and the packshot becomes the front label, so the logo and copy are pixel-exact (`tools/build_products.py`, `src/products.js`) |

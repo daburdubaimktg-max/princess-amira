@@ -71,10 +71,11 @@ function prep(root, { cast = true, receive = true } = {}) {
 }
 
 // ---------- animated character ----------
-// Auto-rigged ball gowns tear when the legs move, so leg/hip tracks can be dropped
-// and the body animates from the waist up.
-const LEG_BONES = /(UpLeg|Leg|Foot|Toe|Hips)$/;
-export function character(gltf, extraClips, height, { lockLegs = false, idleWeight = 0.5 } = {}) {
+// The auto-rig twists the spine/neck and tears the ball gown when legs move, so
+// Amira keeps only her arm tracks; whole-body motion (hops, twirls) is applied
+// to the model's root instead, which can't deform her.
+const ARM_BONES = /(Shoulder|Arm|ForeArm|Hand)$/;
+export function character(gltf, extraClips, height, { armsOnly = false, idleWeight = 0.5 } = {}) {
   const model = prep(gltf.scene);
   const holder = fit(model, height);
   const mixer = new THREE.AnimationMixer(model);
@@ -82,7 +83,7 @@ export function character(gltf, extraClips, height, { lockLegs = false, idleWeig
   const add = (name, clip) => {
     if (!clip) return;
     const c = clip.clone();
-    if (lockLegs) c.tracks = c.tracks.filter((t) => !LEG_BONES.test(t.name.split('.')[0]));
+    if (armsOnly) c.tracks = c.tracks.filter((t) => ARM_BONES.test(t.name.split('.')[0]));
     const a = mixer.clipAction(c);
     // idle is blended with the rest pose so the stock clip reads as gentle breathing
     a.setEffectiveWeight(name === 'idle' ? idleWeight : 1);
@@ -329,7 +330,7 @@ export async function buildWorld({ renderer, onProgress }) {
   world.add(ball);
 
   // characters
-  const amira = character(amiraG, { wave: clipsOf(wave), cheer: clipsOf(cheer), cast: clipsOf(cast) }, 1.0, { lockLegs: true, idleWeight: 0.35 });
+  const amira = character(amiraG, { wave: clipsOf(wave), cheer: clipsOf(cheer), cast: clipsOf(cast) }, 1.0, { armsOnly: true, idleWeight: 0.6 });
   amira.group.position.set(0, 0.02, 0.1);
   world.add(amira.group);
 

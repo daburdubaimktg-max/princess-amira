@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Amira Magic Scan</title>
-  <meta name="description" content="Scan a Dabur Amla Kids pack or the Amira card and watch Princess Amira come to life." />
+  <meta name="description" content="Scan a Dabur Amla Kids pack or the Amira card, then play with Princess Amira." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./scan.css" />
@@ -20,6 +20,7 @@
 </head>
 <body>
   <div id="ar"></div>
+  <div id="flash"></div>
 
   <section id="intro">
     <div class="card">
@@ -30,7 +31,7 @@
         <img src="./targets/oil.jpg" alt="" />
         <img src="./targets/detangler.jpg" alt="" />
         <img src="./targets/shampoo.jpg" alt="" />
-        <img src="./targets/amira_card.jpg" alt="" class="wide" />
+        <img src="./targets/amira_card.jpg" alt="" />
       </div>
       <button id="btn-start" class="primary" data-i18n="start"></button>
       <p id="status" class="status" aria-live="polite"></p>
@@ -41,17 +42,40 @@
   <section id="hud" hidden>
     <div class="top">
       <button id="btn-close" class="icon" aria-label="Close">✕</button>
+      <div id="score" class="score" hidden>
+        <span id="score-icon"></span>
+        <span id="score-dots"></span>
+      </div>
       <button id="btn-sound" class="icon" aria-label="Sound">🔊</button>
     </div>
+    <div id="mission" class="mission" hidden></div>
     <div id="scan-hint" class="scan-hint">
       <div class="frame"><i></i><i></i><i></i><i></i></div>
       <span data-i18n="scanHint"></span>
     </div>
     <div id="bubble"></div>
     <div id="actions" class="actions" hidden>
-      <button data-act="wave" class="pill" data-i18n="wave"></button>
-      <button data-act="cheer" class="pill" data-i18n="cheer"></button>
-      <button data-act="cast" class="pill" data-i18n="magic"></button>
+      <button id="btn-dance" class="pill" data-i18n="dance"></button>
+      <button id="btn-photo" class="pill big" data-i18n="photo"></button>
+      <button id="btn-again" class="pill" data-i18n="again" hidden></button>
+    </div>
+  </section>
+
+  <section id="win" hidden>
+    <div class="win-card">
+      <div class="badge">👑</div>
+      <h2 data-i18n="winTitle"></h2>
+      <p id="win-line"></p>
+    </div>
+  </section>
+
+  <section id="shot" hidden>
+    <div class="shot-card">
+      <img id="shot-img" alt="" />
+      <div class="shot-actions">
+        <button id="btn-share" class="primary" data-i18n="share"></button>
+        <button id="btn-shot-close" class="link" data-i18n="back"></button>
+      </div>
     </div>
   </section>
 
