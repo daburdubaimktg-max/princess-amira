@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { loadProducts, PRODUCTS } from './products.js';
+import { cartoonAmira } from './amira.js';
 
 const BASE = new URL('../assets/', import.meta.url);
 const url = (p) => new URL(p, BASE).href;
@@ -71,11 +72,8 @@ function prep(root, { cast = true, receive = true } = {}) {
 }
 
 // ---------- animated character ----------
-// The auto-rig twists the spine/neck and tears the ball gown when legs move, so
-// Amira keeps only her arm tracks; whole-body motion (hops, twirls) is applied
-// to the model's root instead, which can't deform her.
-const ARM_BONES = /(Shoulder|Arm|ForeArm|Hand)$/;
-export function character(gltf, extraClips, height, { armsOnly = false, idleWeight = 0.5 } = {}) {
+// (used for Amira's friends; Amira herself is the cartoon in amira.js)
+export function character(gltf, extraClips, height, { idleWeight = 0.5 } = {}) {
   const model = prep(gltf.scene);
   const holder = fit(model, height);
   const mixer = new THREE.AnimationMixer(model);
@@ -83,7 +81,6 @@ export function character(gltf, extraClips, height, { armsOnly = false, idleWeig
   const add = (name, clip) => {
     if (!clip) return;
     const c = clip.clone();
-    if (armsOnly) c.tracks = c.tracks.filter((t) => ARM_BONES.test(t.name.split('.')[0]));
     const a = mixer.clipAction(c);
     // idle is blended with the rest pose so the stock clip reads as gentle breathing
     a.setEffectiveWeight(name === 'idle' ? idleWeight : 1);
@@ -252,8 +249,7 @@ export async function buildWorld({ renderer, onProgress }) {
   const loadOpt = (f) => load(f).catch(() => null);
   const clipsOf = (g) => g?.animations;
 
-  const [amiraG, wave, cheer, cast, f1G, f2G, f1Cheer, f2Cheer, palaceG, palmG, cloudG, packs, lineupPacks] = await Promise.all([
-    load('amira.glb'), loadOpt('amira_wave.glb'), loadOpt('amira_cheer.glb'), loadOpt('amira_cast.glb'),
+  const [f1G, f2G, f1Cheer, f2Cheer, palaceG, palmG, cloudG, packs, lineupPacks] = await Promise.all([
     load('friend_blue.glb'), load('friend_pony.glb'), loadOpt('friend_blue_cheer.glb'), loadOpt('friend_pony_cheer.glb'),
     load('palace.glb'), load('palm.glb'), load('cloud.glb'),
     loadProducts(BASE, manager, 0.26), loadProducts(BASE, manager, 0.4),
@@ -330,7 +326,7 @@ export async function buildWorld({ renderer, onProgress }) {
   world.add(ball);
 
   // characters
-  const amira = character(amiraG, { wave: clipsOf(wave), cheer: clipsOf(cheer), cast: clipsOf(cast) }, 1.0, { armsOnly: true, idleWeight: 0.6 });
+  const amira = cartoonAmira({ baseUrl: BASE, manager, height: 1.0 });
   amira.group.position.set(0, 0.02, 0.1);
   world.add(amira.group);
 
@@ -415,7 +411,7 @@ export async function buildWorld({ renderer, onProgress }) {
   }
 
   function update(t, dt) {
-    amira.mixer.update(dt);
+    amira.update(dt, t);
     friends.forEach((f) => f.mixer.update(dt));
     sea.material.uniforms.time.value += dt * 0.35;
     palms.forEach((p, i) => { p.rotation.z = Math.sin(t * 0.7 + i * 2) * 0.012; });

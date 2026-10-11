@@ -47,8 +47,8 @@ still pose (`assets/amira/still.jpg`), so they chain seamlessly.
 ## What's in the world
 | Asset | How it was made |
 |---|---|
-| **Amira** (rigged, animated: idle, wave, cheer, spell-cast) | Frames from the series → clean turnaround ([`docs/reference/amira_turnaround.jpg`](docs/reference/amira_turnaround.jpg)) → Meshy 7 image-to-3D (textured, PBR, auto-rig). Only her arm bones are animated; hops, twirls and dancing move her whole body, so her neck and gown never distort. |
-| **Two friends** (blue headband, ponytail) | Same pipeline from the beach-episode frame |
+| **Amira** (wave, dance, cheer, magic) | The series' own cartoon render, played as green-screen clips (`assets/amira/*.mp4`) keyed out live (`src/amira.js`), the same as in the scan filter. She always turns to face you, so she looks exactly like the cartoons. |
+| **Two friends** (blue headband, ponytail) | Meshy image-to-3D (textured, auto-rigged) from the beach-episode frame |
 | **Palace, palm trees, Tangle Cloud** | Meshy text-to-3D, PBR |
 | **Hair Oil, Detangler, Shampoo** | Built from the **official packshots**: the silhouette is traced into a 3D lathe and the packshot becomes the front label, so the logo and copy are pixel-exact (`tools/build_products.py`, `src/products.js`) |
 | Sky / lighting | Poly Haven *Kloofendal 43d Clear* sky (CC0) as environment light |
@@ -93,7 +93,7 @@ Pages on a private repo needs a paid GitHub plan, and the published site is publ
 | `src/i18n.js` | All Arabic and English copy |
 
 ## Next steps
-1. **Swap in the studio's own Amira rig** if one exists. The generated model is close to on-model, but the series' master asset will always win. Drop it in as `assets/models/amira.glb`.
+1. **Studio-made Amira clips:** replace the generated clips in `assets/amira/` with the animation studio's own green-screen renders (9:16, Amira filling about 74% of the height) for more moves and perfect continuity with the series.
 2. **Real back-label art** for the three packs: the backs are currently plain bottle colour.
 3. **iOS AR** via a USDZ export of the island (AR Quick Look) or a WebAR SDK.
 4. **Voice lines** recorded by Amira's voice actor.
